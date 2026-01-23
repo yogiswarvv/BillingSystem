@@ -29,9 +29,7 @@ namespace BillingSystem.Services
                 throw new Exception($"Mobile Number {patient.MobileNumber} already exists.");
             }
 
-            // Business Rule: Senior Citizen Logic
-            if (patient.Age >= 60) patient.IsSenior = true;
-            else patient.IsSenior = false;
+            // Senior Citizen logic is now handled automatically by the Patient model age calculation.
 
             patient.CreatedDate = DateTime.Now;
             patient.IsActive = true;

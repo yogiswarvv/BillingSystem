@@ -144,4 +144,5 @@ C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\refi
 C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\BillingSystem.pdb
 C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\BillingSystem.genruntimeconfig.cache
 C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\ref\BillingSystem.dll
+C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\BillingSystem.sourcelink.json
 C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt

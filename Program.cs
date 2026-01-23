@@ -19,6 +19,9 @@ builder.Services.AddScoped<BillingSystem.Services.IBillingService, BillingSystem
 builder.Services.AddScoped<BillingSystem.Services.IPatientService, BillingSystem.Services.PatientService>();
 builder.Services.AddScoped<BillingSystem.Services.IPaymentService, BillingSystem.Services.PaymentService>();
 builder.Services.AddScoped<BillingSystem.Services.IInsuranceService, BillingSystem.Services.InsuranceService>();
+builder.Services.AddScoped<BillingSystem.Services.DoctorService>();
+builder.Services.AddScoped<BillingSystem.Services.AppointmentService>();
+builder.Services.AddScoped<BillingSystem.Services.LabOrderService>();
 
 var app = builder.Build();
 
@@ -35,8 +38,8 @@ using (var scope = app.Services.CreateScope())
             // If DB exists, EnsureCreated won't seed. We manually seed if empty.
             if (!context.Patients.Any())
             {
-                context.Patients.Add(new Patient { FullName = "John Doe", Age = 45, Gender = Gender.Male, MobileNumber = "9876543210", IsSenior = false, IsActive = true, CreatedDate = DateTime.Now });
-                context.Patients.Add(new Patient { FullName = "Jane Smith", Age = 65, Gender = Gender.Female, MobileNumber = "8765432109", IsSenior = true, IsActive = true, CreatedDate = DateTime.Now });
+                context.Patients.Add(new Patient { FirstName = "John", LastName = "Doe", DateOfBirth = new DateTime(1980, 1, 1), Gender = Gender.Male, MobileNumber = "9876543210", IsActive = true, CreatedDate = DateTime.Now });
+                context.Patients.Add(new Patient { FirstName = "Jane", LastName = "Smith", DateOfBirth = new DateTime(1960, 1, 1), Gender = Gender.Female, MobileNumber = "8765432109", IsActive = true, CreatedDate = DateTime.Now });
                 context.SaveChanges();
             }
         }

@@ -17,10 +17,15 @@
                     <!-- Personal Details -->
                     <h5 class="border-bottom pb-2 mb-3">Personal Details</h5>
                     <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label asp-for="Name" class="form-label"></label>
-                            <input asp-for="Name" class="form-control" placeholder="Enter patient full name" />
-                            <span asp-validation-for="Name" class="text-danger"></span>
+                        <div class="col-md-3">
+                            <label asp-for="FirstName" class="form-label"></label>
+                            <input asp-for="FirstName" class="form-control" placeholder="First Name" />
+                            <span asp-validation-for="FirstName" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="LastName" class="form-label"></label>
+                            <input asp-for="LastName" class="form-control" placeholder="Last Name" />
+                            <span asp-validation-for="LastName" class="text-danger"></span>
                         </div>
                         <div class="col-md-6">
                              <label asp-for="MobileNumber" class="form-label"></label>
@@ -30,10 +35,10 @@
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-4">
-                            <label asp-for="Age" class="form-label"></label>
-                            <input asp-for="Age" class="form-control" type="number" />
-                            <span asp-validation-for="Age" class="text-danger"></span>
-                            <small class="text-muted">60+ qualifies for Senior Citizen Discount (10%)</small>
+                            <label asp-for="DateOfBirth" class="form-label"></label>
+                            <input asp-for="DateOfBirth" class="form-control" type="date" />
+                            <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                            <small class="text-muted">Senior discount apply automatically based on DOB.</small>
                         </div>
                         <div class="col-md-4">
                             <label asp-for="Gender" class="form-label"></label>

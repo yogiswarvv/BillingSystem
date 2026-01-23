@@ -1,0 +1,86 @@
+@model BillingSystem.ViewModels.AppointmentDetailsVM
+
+@{
+    ViewData["Title"] = "Appointment Details";
+}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-10 mx-auto">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="text-primary fw-bold"><i class="bi bi-info-circle"></i> Appointment Details</h2>
+                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to List</a>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0">Patient & Doctor Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 border-end">
+                            <h6 class="text-muted text-uppercase small">Patient</h6>
+                            <h4 class="mb-3">@Model.Appointment.Patient.FullName</h4>
+                            <p class="mb-1"><i class="bi bi-calendar"></i> @Model.Appointment.AppointmentDate.ToLongDateString()</p>
+                            <p class="mb-1"><i class="bi bi-clock"></i> @Model.Appointment.AppointmentTime.ToString(@"hh\:mm")</p>
+                        </div>
+                        <div class="col-md-6 ps-md-4">
+                            <h6 class="text-muted text-uppercase small">Assigned Doctor</h6>
+                            <h4 class="mb-3">@Model.Appointment.DoctorName</h4>
+                            <p class="mb-1"><i class="bi bi-tag"></i> Reason: @(Model.Appointment.Reason ?? "Not specified")</p>
+                            <p class="mb-0">Status: <span class="badge bg-info">@Model.Appointment.Status</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0"><i class="bi bi-clipboard-pulse"></i> Lab Orders</h5>
+                    <a asp-controller="LabOrder" asp-action="Create" asp-route-appointmentId="@Model.Appointment.AppointmentId" class="btn btn-warning btn-sm fw-bold">
+                        <i class="bi bi-plus-circle"></i> Order Multiple Tests
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light text-secondary">
+                                <tr>
+                                    <th class="ps-4">Test Name</th>
+                                    <th>Status</th>
+                                    <th>Results</th>
+                                    <th class="text-center pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.LabOrders.Any())
+                                {
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4 text-muted small">No lab tests ordered for this appointment.</td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var lab in Model.LabOrders)
+                                    {
+                                        <tr>
+                                            <td class="ps-4 fw-bold">@lab.TestName</td>
+                                            <td>
+                                                <span class="badge @(lab.Status == "Pending" ? "bg-warning text-dark" : "bg-success")">@lab.Status</span>
+                                                @if(lab.IsPaid) { <span class="badge bg-success ms-1">Paid</span> } else { <span class="badge bg-danger ms-1">Unpaid</span> }
+                                            </td>
+                                            <td>@(lab.Results ?? "Awaiting Results")</td>
+                                            <td class="text-center pe-4">
+                                                <a asp-controller="LabOrder" asp-action="UpdateStatus" asp-route-id="@lab.LabOrderId" class="btn btn-sm btn-outline-primary">Update</a>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

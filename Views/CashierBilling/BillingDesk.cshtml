@@ -48,6 +48,16 @@
                             </div>
                         </div>
 
+                        <!-- Clinical Suggestions (EHR Bridge) -->
+                        <div id="clinicalSuggestionsCard" class="card border-info mb-4 d-none">
+                            <div class="card-header bg-info text-white py-2">
+                                <h6 class="mb-0 small fw-bold"><i class="bi bi-magic"></i> Clinical Suggestions (from EHR)</h6>
+                            </div>
+                            <div class="card-body p-2" id="clinicalSuggestions">
+                                <!-- Populated via JS -->
+                            </div>
+                        </div>
+
                         <!-- Services Section -->
                         <h6 class="text-primary border-bottom pb-2 mb-3 mt-4">Services & Admission</h6>
                         <div class="mb-3">
@@ -58,10 +68,15 @@
                             <span asp-validation-for="SelectedServiceIds" class="text-danger"></span>
                         </div>
                         
-                        <div class="row g-3">
+                        <div class="form-check form-switch mb-3 mt-2">
+                            <input class="form-check-input" type="checkbox" id="chkAdmission" @(Model.AdmitDays > 0 ? "checked" : "")>
+                            <label class="form-check-label fw-bold" for="chkAdmission">Include Admission / Room Charges (IPD)</label>
+                        </div>
+
+                        <div id="admissionFields" class="row g-3 @(Model.AdmitDays > 0 ? "" : "d-none")">
                              <div class="col-md-4">
                                 <label asp-for="AdmitDays" class="form-label">Admission Days</label>
-                                <input asp-for="AdmitDays" class="form-control" min="0" />
+                                <input asp-for="AdmitDays" class="form-control" min="0" id="numAdmitDays" />
                                 <span asp-validation-for="AdmitDays" class="text-danger"></span>
                             </div>
                         </div>
@@ -196,6 +211,13 @@
                                     <input type="hidden" name="SelectedServiceIds" value="@id" />
                                 }
                             }
+                            @if(Model.SelectedLabOrderIds != null)
+                            {
+                                @foreach(var id in Model.SelectedLabOrderIds)
+                                {
+                                    <input type="hidden" name="SelectedLabOrderIds" value="@id" />
+                                }
+                            }
 
                             <button type="submit" class="btn btn-success btn-lg w-100 shadow-sm pulse-button">
                                 <i class="bi bi-check-circle-fill"></i> CONFIRM & GENERATE BILL
@@ -225,6 +247,17 @@
                     $('#insuranceFields').removeClass('d-none');
                 } else {
                     $('#insuranceFields').addClass('d-none');
+                    // Reset insurance fields if needed
+                }
+            });
+
+            // Admission Toggle
+            $('#chkAdmission').change(function() {
+                if(this.checked) {
+                    $('#admissionFields').removeClass('d-none');
+                } else {
+                    $('#admissionFields').addClass('d-none');
+                    $('#numAdmitDays').val(0); // Reset to 0 when disabled
                 }
             });
 
@@ -249,16 +282,96 @@
 
                     // Auto-populate admission days if any
                     $('input[name="AdmitDays"]').val(data.admitDays);
+                    if(data.admitDays > 0) {
+                        $('#chkAdmission').prop('checked', true);
+                        $('#admissionFields').removeClass('d-none');
+                    } else {
+                        $('#chkAdmission').prop('checked', false);
+                        $('#admissionFields').addClass('d-none');
+                    }
+
+                    // Update Clinical Suggestions
+                    var container = $('#clinicalSuggestions');
+                    container.empty();
+                    
+                    if ((data.pendingAppointments && data.pendingAppointments.length > 0) || 
+                        (data.pendingTests && data.pendingTests.length > 0)) {
+                        
+                        $('#clinicalSuggestionsCard').removeClass('d-none');
+                        
+                        if (data.pendingAppointments) {
+                            data.pendingAppointments.forEach(function(item) {
+                                var dateString = new Date(item.appointmentDate).toLocaleDateString();
+                                container.append(`
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-start border-4 border-info bg-light rounded">
+                                        <div>
+                                            <div class="fw-bold">Appointment: ${item.reason || 'General'}</div>
+                                            <div class="small text-muted">${dateString} with ${item.doctorName}</div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary add-ehr-item" data-type="Consultation" data-id="${item.appointmentId}">Add</button>
+                                    </div>
+                                `);
+                            });
+                        }
+
+                        if (data.pendingTests) {
+                            data.pendingTests.forEach(function(item) {
+                                container.append(`
+                                    <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-start border-4 border-warning bg-light rounded">
+                                        <div>
+                                            <div class="fw-bold">Test: ${item.testName}</div>
+                                            <div class="small text-muted">Ordered on ${new Date(item.orderDate).toLocaleDateString()}</div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary add-ehr-item" data-name="${item.testName}" data-id="${item.labOrderId}">Add</button>
+                                    </div>
+                                `);
+                            });
+                        }
+                    } else {
+                        $('#clinicalSuggestionsCard').addClass('d-none');
+                    }
                 })
                 .fail(function() {
                      alert('Patient not found!');
                      $('#lblPatientName').val('');
                      $('#hdnPatientName').val('');
+                     $('#clinicalSuggestionsCard').addClass('d-none');
                 })
                 .always(function() {
                     $('#btnLookup').html('<i class="bi bi-search"></i>');
                 });
             }
+
+            // Delegation for Ehr Item Add
+            $(document).on('click', '.add-ehr-item', function() {
+                var name = $(this).data('name');
+                var id = $(this).data('id');
+
+                if (!name) {
+                    alert('This item will be added to consultation fee automatically.');
+                    return;
+                }
+
+                // Add to hidden fields for LabOrders if it's a test
+                if (id) {
+                    $('#billingForm').append('<input type="hidden" name="SelectedLabOrderIds" value="' + id + '" />');
+                }
+
+                // Try to find in dropdown
+                var found = false;
+                $('#SelectedServiceIds option').each(function() {
+                    if ($(this).text().toLowerCase().indexOf(name.toLowerCase()) !== -1) {
+                        $(this).prop('selected', true);
+                        found = true;
+                    }
+                });
+
+                if (found) {
+                    alert('Added ' + name + ' from Clinical Records');
+                } else {
+                    alert('Clinical item "' + name + '" not found in Service Master. Please add manually.');
+                }
+            });
 
             $('#btnLookup').click(function() {
                 performLookup();

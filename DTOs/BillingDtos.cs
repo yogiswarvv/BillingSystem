@@ -10,6 +10,7 @@ namespace BillingSystem.DTOs
         public bool ApplyInsurance { get; set; }
         public InsuranceCoverageType? InsuranceType { get; set; }
         public double? InsurancePercent { get; set; }
+        public List<int> SelectedLabOrderIds { get; set; } = new List<int>();
     }
 
     public class BillCalculationResultDto
@@ -38,5 +39,28 @@ namespace BillingSystem.DTOs
         public string Description { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public BillItemType Type { get; set; } 
+    }
+
+    public class LabOrderListDto
+    {
+        public int LabOrderId { get; set; }
+        public string TestName { get; set; } = string.Empty;
+        public DateTime OrderDate { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string? Results { get; set; }
+        public DateTime AppointmentDate { get; set; }
+        public string PatientName { get; set; } = string.Empty;
+    }
+
+    public class AppointmentListDto
+    {
+        public int AppointmentId { get; set; }
+        public string PatientName { get; set; } = string.Empty;
+        public DateTime AppointmentDate { get; set; }
+        public TimeSpan AppointmentTime { get; set; }
+        public string DoctorName { get; set; } = string.Empty;
+        public string? Reason { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public int LabOrderCount { get; set; }
     }
 }

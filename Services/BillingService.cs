@@ -8,7 +8,8 @@ namespace BillingSystem.Services
     {
         Task<BillCalculationResultDto> CalculateBillAsync(BillCalculationRequestDto request);
         Task<int> GenerateBillAsync(BillCalculationRequestDto request);
-        Task<Bill?> GetBillByIdAsync(int billId); // Return Entity or DTO? Entity for now to populate VM easily
+        Task<Bill?> GetBillByIdAsync(int billId);
+        Task<IEnumerable<Bill>> GetBillsByPatientIdAsync(int patientId);
         Task<IEnumerable<ServiceMaster>> GetAllServicesAsync();
     }
 
@@ -208,6 +209,21 @@ namespace BillingSystem.Services
                     await _unitOfWork.Repository<BillItem>().AddAsync(billItem);
                 }
 
+                // Mark LabOrders as Paid
+                if (request.SelectedLabOrderIds != null && request.SelectedLabOrderIds.Any())
+                {
+                    foreach (var labOrderId in request.SelectedLabOrderIds)
+                    {
+                        var labOrder = await _unitOfWork.Repository<LabOrder>().GetByIdAsync(labOrderId);
+                        if (labOrder != null)
+                        {
+                            labOrder.IsPaid = true;
+                            labOrder.Status = "Paid"; // Automatically update status to Paid for clinical visibility
+                            _unitOfWork.Repository<LabOrder>().Update(labOrder);
+                        }
+                    }
+                }
+
                 await _unitOfWork.CompleteAsync();
                 await _unitOfWork.CommitTransactionAsync();
                 
@@ -228,6 +244,11 @@ namespace BillingSystem.Services
         public async Task<IEnumerable<ServiceMaster>> GetAllServicesAsync()
         {
             return await _unitOfWork.Services.GetAllAsync();
+        }
+
+        public async Task<IEnumerable<Bill>> GetBillsByPatientIdAsync(int patientId)
+        {
+            return await _unitOfWork.Bills.GetBillsByPatientIdAsync(patientId);
         }
     }
 }

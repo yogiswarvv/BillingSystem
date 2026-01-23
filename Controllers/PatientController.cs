@@ -49,8 +49,9 @@ namespace BillingSystem.Controllers
                 // 1. Create Patient Entity
                 var patient = new Patient
                 {
-                    FullName = model.Name,
-                    Age = model.Age,
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    DateOfBirth = model.DateOfBirth,
                     Gender = model.Gender,
                     MobileNumber = model.MobileNumber,
                     Email = model.Email,

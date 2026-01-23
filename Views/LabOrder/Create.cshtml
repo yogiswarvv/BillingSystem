@@ -1,0 +1,57 @@
+@model BillingSystem.ViewModels.BulkLabOrderVM
+
+@{
+    ViewData["Title"] = "Order Lab Tests";
+}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card shadow border-0">
+                <div class="card-header bg-warning text-dark py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-plus-circle"></i> Bulk Lab Test Orders</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-4">
+                        <span class="text-muted">Patient Name:</span> <strong class="fs-5">@Model.PatientName</strong>
+                    </div>
+
+                    <form asp-action="Create">
+                        <input type="hidden" asp-for="AppointmentId" />
+                        <input type="hidden" asp-for="PatientName" />
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold d-block mb-3">Select Tests (N-number available)</label>
+                            <div class="row g-2">
+                                @foreach (var test in Model.AvailableTests)
+                                {
+                                    <div class="col-md-6">
+                                        <div class="form-check p-2 border rounded hover-bg-light">
+                                            <input class="form-check-input ms-0" type="checkbox" name="SelectedTestNames" value="@test.Value" id="test_@test.Value.Replace(" ", "_")">
+                                            <label class="form-check-label ms-2" for="test_@test.Value.Replace(" ", "_")">
+                                                @test.Text
+                                            </label>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <span asp-validation-for="SelectedTestNames" class="text-danger mt-2 d-block"></span>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-warning btn-lg fw-bold">Confirm All Orders</button>
+                            <a asp-controller="Appointment" asp-action="Details" asp-route-id="@Model.AppointmentId" class="btn btn-light">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-bg-light:hover {
+        background-color: #f8f9fa;
+        border-color: #ffc107 !important;
+    }
+</style>

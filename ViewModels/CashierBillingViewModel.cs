@@ -16,6 +16,7 @@ namespace BillingSystem.ViewModels
         public bool IsSenior { get; set; }
 
         public List<int> SelectedServiceIds { get; set; } = new List<int>();
+        public List<int> SelectedLabOrderIds { get; set; } = new List<int>();
 
         public List<SelectListItem> AvailableServices { get; set; } = new List<SelectListItem>();
 

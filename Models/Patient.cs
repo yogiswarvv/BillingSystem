@@ -10,12 +10,33 @@ namespace BillingSystem.Models
         public int PatientId { get; set; }
 
         [Required]
-        [MinLength(3)]
-        [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "Name must contain only alphabets.")]
-        public string FullName { get; set; } = string.Empty;
+        [MaxLength(100)]
+        [Display(Name = "First Name")]
+        public string FirstName { get; set; } = string.Empty;
 
-        [Range(0, 120)]
-        public int Age { get; set; }
+        [Required]
+        [MaxLength(100)]
+        [Display(Name = "Last Name")]
+        public string LastName { get; set; } = string.Empty;
+
+        [NotMapped]
+        public string FullName => $"{FirstName} {LastName}";
+
+        [Required]
+        [Display(Name = "Date of Birth")]
+        public DateTime DateOfBirth { get; set; }
+
+        [NotMapped]
+        public int Age
+        {
+            get
+            {
+                var today = DateTime.Today;
+                var age = today.Year - DateOfBirth.Year;
+                if (DateOfBirth.Date > today.AddYears(-age)) age--;
+                return age;
+            }
+        }
 
         public Gender Gender { get; set; }
 
@@ -26,7 +47,10 @@ namespace BillingSystem.Models
         [EmailAddress]
         public string? Email { get; set; }
 
-        public bool IsSenior { get; set; } // Computed
+        public string? Address { get; set; }
+
+        [NotMapped]
+        public bool IsSenior => Age >= 60;
 
         public bool IsActive { get; set; } = true;
 
@@ -38,5 +62,6 @@ namespace BillingSystem.Models
         public virtual ICollection<Admission> Admissions { get; set; } = new List<Admission>();
         public virtual ICollection<Insurance> Insurances { get; set; } = new List<Insurance>();
         public virtual ICollection<Bill> Bills { get; set; } = new List<Bill>();
+        public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     }
 }

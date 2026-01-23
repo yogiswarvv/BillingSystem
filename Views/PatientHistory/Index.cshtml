@@ -1,0 +1,99 @@
+@model BillingSystem.Controllers.PatientHistoryViewModel
+
+@{
+    ViewData["Title"] = "Patient Medical & Billing History";
+    var timelineItems = new List<dynamic>();
+    
+    foreach (var appt in Model.Appointments)
+    {
+        timelineItems.Add(new { 
+            Date = appt.AppointmentDate.Add(appt.AppointmentTime), 
+            Type = "Appointment", 
+            Title = $"Appointment: {appt.Reason}", 
+            Detail = $"Doctor: {appt.DoctorName} | Status: {appt.Status}",
+            Icon = "bi-calendar-check",
+            BgClass = "bg-info"
+        });
+    }
+
+    foreach (var test in Model.LabOrders)
+    {
+        timelineItems.Add(new { 
+            Date = test.OrderDate, 
+            Type = "LabTest", 
+            Title = $"Lab Test: {test.TestName}", 
+            Detail = $"Status: {test.Status} | Result: {test.Results ?? "Awaiting"}",
+            Icon = "bi-clipboard-pulse",
+            BgClass = "bg-warning text-dark"
+        });
+    }
+
+    foreach (var bill in Model.Bills)
+    {
+        timelineItems.Add(new { 
+            Date = bill.BillDate, 
+            Type = "Bill", 
+            Title = $"Invoice generated: #{bill.BillId}", 
+            Detail = $"Amount: {bill.FinalAmount:C} | Status: {bill.Status}",
+            Icon = "bi-currency-dollar",
+            BgClass = "bg-success"
+        });
+    }
+
+    var sortedTimeline = timelineItems.OrderByDescending(t => t.Date).ToList();
+}
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-primary">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-1 text-primary">@Model.Patient.FullName</h2>
+                        <p class="mb-0 text-muted">
+                            <i class="bi bi-person"></i> ID: @Model.Patient.PatientId | 
+                            <i class="bi bi-phone"></i> @Model.Patient.MobileNumber | 
+                            <i class="bi bi-calendar"></i> Age: @Model.Patient.Age
+                        </p>
+                    </div>
+                    <div>
+                         <a asp-controller="CashierBilling" asp-action="BillingDesk" asp-route-patientId="@Model.Patient.PatientId" class="btn btn-primary">
+                             <i class="bi bi-plus-lg"></i> New Bill
+                         </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-10 mx-auto">
+            <h4 class="mb-4"><i class="bi bi-clock-history"></i> Unified Timeline</h4>
+            <div class="timeline">
+                @foreach (var item in sortedTimeline)
+                {
+                    <div class="timeline-item position-relative ps-4 pb-4 border-start ms-2">
+                        <div class="timeline-icon position-absolute rounded-circle @item.BgClass text-white d-flex align-items-center justify-content-center" style="left: -1.25rem; width: 2.5rem; height: 2.5rem; top: 0;">
+                            <i class="bi @item.Icon fs-5"></i>
+                        </div>
+                        <div class="card shadow-sm ms-3">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="fw-bold mb-1">@item.Title</h6>
+                                    <small class="text-muted">@item.Date.ToString("f")</small>
+                                </div>
+                                <p class="mb-0 text-muted">@item.Detail</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline-item:last-child {
+        border-start-color: transparent !important;
+    }
+</style>

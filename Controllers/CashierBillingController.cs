@@ -60,7 +60,8 @@ namespace BillingSystem.Controllers
                 AdmitDays = model.AdmitDays,
                 ApplyInsurance = model.HasInsurance,
                 InsuranceType = model.InsuranceCoverageType,
-                InsurancePercent = model.InsurancePercent
+                InsurancePercent = model.InsurancePercent,
+                SelectedLabOrderIds = model.SelectedLabOrderIds
             };
 
             try 
@@ -119,7 +120,8 @@ namespace BillingSystem.Controllers
                 AdmitDays = model.AdmitDays,
                 ApplyInsurance = model.HasInsurance,
                 InsuranceType = model.InsuranceCoverageType,
-                InsurancePercent = model.InsurancePercent
+                InsurancePercent = model.InsurancePercent,
+                SelectedLabOrderIds = model.SelectedLabOrderIds
             };
 
             try

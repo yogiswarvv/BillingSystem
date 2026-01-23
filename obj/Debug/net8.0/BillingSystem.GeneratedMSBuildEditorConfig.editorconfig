@@ -22,6 +22,18 @@ build_property._RazorSourceGeneratorDebug =
 build_property.EffectiveAnalysisLevelStyle = 8.0
 build_property.EnableCodeStyleSeverity = 
 
+[C:/Yogiswar Kancharla Projects/BillingSystem/BillingSystem/Views/Appointment/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXBwb2ludG1lbnRcQ3JlYXRlLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Yogiswar Kancharla Projects/BillingSystem/BillingSystem/Views/Appointment/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXBwb2ludG1lbnRcRGV0YWlscy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Yogiswar Kancharla Projects/BillingSystem/BillingSystem/Views/Appointment/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXBwb2ludG1lbnRcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Yogiswar Kancharla Projects/BillingSystem/BillingSystem/Views/Billing/GenerateBill.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmlsbGluZ1xHZW5lcmF0ZUJpbGwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
@@ -60,6 +72,22 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Yogiswar Kancharla Projects/BillingSystem/BillingSystem/Views/Home/Privacy.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxQcml2YWN5LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Yogiswar Kancharla Projects/BillingSystem/BillingSystem/Views/LabOrder/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGFiT3JkZXJcQ3JlYXRlLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Yogiswar Kancharla Projects/BillingSystem/BillingSystem/Views/LabOrder/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGFiT3JkZXJcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Yogiswar Kancharla Projects/BillingSystem/BillingSystem/Views/LabOrder/UpdateStatus.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGFiT3JkZXJcVXBkYXRlU3RhdHVzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Yogiswar Kancharla Projects/BillingSystem/BillingSystem/Views/PatientHistory/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUGF0aWVudEhpc3RvcnlcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Yogiswar Kancharla Projects/BillingSystem/BillingSystem/Views/Patient/Create.cshtml]

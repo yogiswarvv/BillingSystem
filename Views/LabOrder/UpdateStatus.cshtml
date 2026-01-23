@@ -1,0 +1,76 @@
+@model BillingSystem.ViewModels.LabOrderUpdateVM
+
+@{
+    ViewData["Title"] = "Update Lab Results";
+}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card shadow border-0">
+                <div class="card-header bg-success text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-medical"></i> Update Lab Results</h5>
+                </div>
+                <div class="card-body p-4">
+                    <h6 class="text-muted text-uppercase small mb-1">Test Name</h6>
+                    <h4 class="mb-4">@Model.TestName</h4>
+
+                    @if(!Model.IsPaid)
+                    {
+                        <div class="alert alert-danger shadow-sm border-0 d-flex align-items-center mb-4">
+                            <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
+                            <div>
+                                <h6 class="alert-heading mb-0 fw-bold">Payment Required</h6>
+                                <p class="mb-0 small">This item is unpaid. Outcome results can only be saved once the bill is settled for outpatients.</p>
+                            </div>
+                        </div>
+                    }
+
+                    <form asp-action="UpdateStatus">
+                        <input type="hidden" asp-for="LabOrderId" />
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Status" class="form-label fw-bold"></label>
+                            <select asp-for="Status" class="form-control">
+                                <option value="Pending">Pending</option>
+                                <option value="Processing">Processing</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                            <span asp-validation-for="Status" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Results" class="form-label fw-bold"></label>
+                            @if (Model.IsPaid)
+                            {
+                                <textarea asp-for="Results" class="form-control" rows="5" placeholder="Enter findings here..."></textarea>
+                            }
+                            else
+                            {
+                                <textarea asp-for="Results" class="form-control" rows="5" placeholder="Enter findings here..." readonly></textarea>
+                            }
+                            <span asp-validation-for="Results" class="text-danger"></span>
+                            @if(!Model.IsPaid)
+                            {
+                                <div class="form-text text-danger mt-1">Results field is locked until payment is confirmed.</div>
+                            }
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            @if (Model.IsPaid)
+                            {
+                                <button type="submit" class="btn btn-success btn-lg">Save Results</button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="btn btn-success btn-lg" disabled>Save Results</button>
+                            }
+                            <a asp-action="Index" class="btn btn-light">Back to Management</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

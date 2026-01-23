@@ -55,6 +55,56 @@ namespace BillingSystem.Migrations
                     b.ToTable("Admissions", "Healthcare");
                 });
 
+            modelBuilder.Entity("BillingSystem.Models.Appointment", b =>
+                {
+                    b.Property<int>("AppointmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AppointmentId"));
+
+                    b.Property<DateTime>("AppointmentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<TimeSpan>("AppointmentTime")
+                        .HasColumnType("time");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<int?>("DoctorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DoctorName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("PatientId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Scheduled");
+
+                    b.HasKey("AppointmentId");
+
+                    b.HasIndex("DoctorId");
+
+                    b.HasIndex("PatientId");
+
+                    b.ToTable("Appointment", "Healthcare");
+                });
+
             modelBuilder.Entity("BillingSystem.Models.AuditLog", b =>
                 {
                     b.Property<int>("AuditLogId")
@@ -63,16 +113,17 @@ namespace BillingSystem.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AuditLogId"));
 
-                    b.Property<string>("Action")
+                    b.Property<string>("ChangedBy")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasDefaultValue("SYSTEM");
 
-                    b.Property<DateTime>("ActionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("EntityName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<DateTime>("ChangedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
 
                     b.Property<string>("NewValue")
                         .HasColumnType("nvarchar(max)");
@@ -80,12 +131,22 @@ namespace BillingSystem.Migrations
                     b.Property<string>("OldValue")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int>("RecordId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TableName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("AuditLogId");
 
-                    b.ToTable("AuditLogs", "Healthcare");
+                    b.ToTable("AuditLog", "Healthcare");
                 });
 
             modelBuilder.Entity("BillingSystem.Models.Bill", b =>
@@ -172,6 +233,71 @@ namespace BillingSystem.Migrations
                     b.ToTable("BillItems", "Healthcare");
                 });
 
+            modelBuilder.Entity("BillingSystem.Models.Doctor", b =>
+                {
+                    b.Property<int>("DoctorId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DoctorId"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Specialization")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("DoctorId");
+
+                    b.ToTable("Doctor", "Healthcare");
+
+                    b.HasData(
+                        new
+                        {
+                            DoctorId = 1,
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FirstName = "Aditya",
+                            IsAvailable = true,
+                            LastName = "Verma",
+                            Specialization = "Cardiology"
+                        },
+                        new
+                        {
+                            DoctorId = 2,
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FirstName = "Sriya",
+                            IsAvailable = true,
+                            LastName = "Reddy",
+                            Specialization = "Diagnostics"
+                        },
+                        new
+                        {
+                            DoctorId = 3,
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FirstName = "Vikram",
+                            IsAvailable = true,
+                            LastName = "Singh",
+                            Specialization = "Radiology"
+                        });
+                });
+
             modelBuilder.Entity("BillingSystem.Models.Insurance", b =>
                 {
                     b.Property<int>("InsuranceId")
@@ -206,6 +332,51 @@ namespace BillingSystem.Migrations
                     b.ToTable("Insurances", "Healthcare");
                 });
 
+            modelBuilder.Entity("BillingSystem.Models.LabOrder", b =>
+                {
+                    b.Property<int>("LabOrderId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LabOrderId"));
+
+                    b.Property<int>("AppointmentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CompletedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("OrderDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<string>("Results")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<string>("TestName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("LabOrderId");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.ToTable("LabOrder", "Healthcare");
+                });
+
             modelBuilder.Entity("BillingSystem.Models.Patient", b =>
                 {
                     b.Property<int>("PatientId")
@@ -214,8 +385,8 @@ namespace BillingSystem.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PatientId"));
 
-                    b.Property<int>("Age")
-                        .HasColumnType("int");
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
@@ -225,10 +396,13 @@ namespace BillingSystem.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETDATE()");
 
+                    b.Property<DateTime>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("FullName")
+                    b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -239,8 +413,10 @@ namespace BillingSystem.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsSenior")
-                        .HasColumnType("bit");
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("MobileNumber")
                         .IsRequired()
@@ -253,6 +429,30 @@ namespace BillingSystem.Migrations
                         .HasDatabaseName("IX_Patient_MobileNumber");
 
                     b.ToTable("Patients", "Healthcare");
+
+                    b.HasData(
+                        new
+                        {
+                            PatientId = 1,
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DateOfBirth = new DateTime(1980, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FirstName = "John",
+                            Gender = 1,
+                            IsActive = true,
+                            LastName = "Doe",
+                            MobileNumber = "9876543210"
+                        },
+                        new
+                        {
+                            PatientId = 2,
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DateOfBirth = new DateTime(1960, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            FirstName = "Jane",
+                            Gender = 2,
+                            IsActive = true,
+                            LastName = "Smith",
+                            MobileNumber = "8765432109"
+                        });
                 });
 
             modelBuilder.Entity("BillingSystem.Models.PatientService", b =>
@@ -362,6 +562,7 @@ namespace BillingSystem.Migrations
                             CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Department = "Pathology",
                             IsActive = true,
+                            ServiceCode = "LAB001",
                             ServiceName = "Lab Test"
                         },
                         new
@@ -371,6 +572,7 @@ namespace BillingSystem.Migrations
                             CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Department = "Radiology",
                             IsActive = true,
+                            ServiceCode = "RAD001",
                             ServiceName = "X-Ray"
                         },
                         new
@@ -380,6 +582,7 @@ namespace BillingSystem.Migrations
                             CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Department = "Cardiology",
                             IsActive = true,
+                            ServiceCode = "CRD001",
                             ServiceName = "ECG"
                         },
                         new
@@ -389,6 +592,7 @@ namespace BillingSystem.Migrations
                             CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Department = "Radiology",
                             IsActive = true,
+                            ServiceCode = "RAD002",
                             ServiceName = "MRI"
                         },
                         new
@@ -398,6 +602,7 @@ namespace BillingSystem.Migrations
                             CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Department = "Radiology",
                             IsActive = true,
+                            ServiceCode = "RAD003",
                             ServiceName = "Ultrasound"
                         },
                         new
@@ -407,7 +612,58 @@ namespace BillingSystem.Migrations
                             CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Department = "Pathology",
                             IsActive = true,
+                            ServiceCode = "LAB002",
                             ServiceName = "Blood Work"
+                        },
+                        new
+                        {
+                            ServiceId = 7,
+                            Cost = 800m,
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Department = "Pathology",
+                            IsActive = true,
+                            ServiceCode = "LAB007",
+                            ServiceName = "Lipid Profile"
+                        },
+                        new
+                        {
+                            ServiceId = 8,
+                            Cost = 950m,
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Department = "Pathology",
+                            IsActive = true,
+                            ServiceCode = "LAB008",
+                            ServiceName = "Kidney Function Test"
+                        },
+                        new
+                        {
+                            ServiceId = 9,
+                            Cost = 1100m,
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Department = "Pathology",
+                            IsActive = true,
+                            ServiceCode = "LAB009",
+                            ServiceName = "Thyroid Profile"
+                        },
+                        new
+                        {
+                            ServiceId = 10,
+                            Cost = 100m,
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Department = "Pathology",
+                            IsActive = true,
+                            ServiceCode = "LAB010",
+                            ServiceName = "Blood Sugar"
+                        },
+                        new
+                        {
+                            ServiceId = 11,
+                            Cost = 1200m,
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Department = "Pathology",
+                            IsActive = true,
+                            ServiceCode = "LAB011",
+                            ServiceName = "Liver Function Test"
                         });
                 });
 
@@ -418,6 +674,24 @@ namespace BillingSystem.Migrations
                         .HasForeignKey("PatientId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("BillingSystem.Models.Appointment", b =>
+                {
+                    b.HasOne("BillingSystem.Models.Doctor", "Doctor")
+                        .WithMany("Appointments")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("BillingSystem.Models.Patient", "Patient")
+                        .WithMany("Appointments")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
 
                     b.Navigation("Patient");
                 });
@@ -455,6 +729,17 @@ namespace BillingSystem.Migrations
                     b.Navigation("Patient");
                 });
 
+            modelBuilder.Entity("BillingSystem.Models.LabOrder", b =>
+                {
+                    b.HasOne("BillingSystem.Models.Appointment", "Appointment")
+                        .WithMany("LabOrders")
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+                });
+
             modelBuilder.Entity("BillingSystem.Models.PatientService", b =>
                 {
                     b.HasOne("BillingSystem.Models.Patient", "Patient")
@@ -485,6 +770,11 @@ namespace BillingSystem.Migrations
                     b.Navigation("Bill");
                 });
 
+            modelBuilder.Entity("BillingSystem.Models.Appointment", b =>
+                {
+                    b.Navigation("LabOrders");
+                });
+
             modelBuilder.Entity("BillingSystem.Models.Bill", b =>
                 {
                     b.Navigation("BillItems");
@@ -492,9 +782,16 @@ namespace BillingSystem.Migrations
                     b.Navigation("Payments");
                 });
 
+            modelBuilder.Entity("BillingSystem.Models.Doctor", b =>
+                {
+                    b.Navigation("Appointments");
+                });
+
             modelBuilder.Entity("BillingSystem.Models.Patient", b =>
                 {
                     b.Navigation("Admissions");
+
+                    b.Navigation("Appointments");
 
                     b.Navigation("Bills");
 
