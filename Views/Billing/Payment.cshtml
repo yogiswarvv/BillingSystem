@@ -1,0 +1,71 @@
+@model BillingSystem.ViewModels.PaymentViewModel
+@using BillingSystem.Models
+
+@{
+    ViewData["Title"] = "Process Payment";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">Process Payment</h4>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-4">
+                    <dt class="col-sm-4">Patient Name</dt>
+                    <dd class="col-sm-8">@Model.PatientName</dd>
+
+                    <dt class="col-sm-4">Total Bill Amount</dt>
+                    <dd class="col-sm-8">@Model.TotalAmount.ToString("C")</dd>
+
+                    <dt class="col-sm-4">Pending Amount</dt>
+                    <dd class="col-sm-8 text-danger fw-bold">@Model.PendingAmount.ToString("C")</dd>
+                </dl>
+
+                <hr />
+
+                <form asp-action="Payment" method="post">
+                    <input type="hidden" asp-for="BillId" />
+                    <input type="hidden" asp-for="PatientName" />
+                    <input type="hidden" asp-for="TotalAmount" />
+                    <input type="hidden" asp-for="PendingAmount" />
+
+                    <div class="text-danger" asp-validation-summary="ModelOnly"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="AmountToPay" class="form-label">Amount to Pay</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input asp-for="AmountToPay" class="form-control" />
+                        </div>
+                        <span asp-validation-for="AmountToPay" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="PaymentMode" class="form-label">Payment Mode</label>
+                        <select asp-for="PaymentMode" class="form-select" asp-items="Html.GetEnumSelectList<PaymentMode>()">
+                            <option value="">Select Mode</option>
+                        </select>
+                        <span asp-validation-for="PaymentMode" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="TransactionReference" class="form-label">Transaction Ref (Optional)</label>
+                        <input asp-for="TransactionReference" class="form-control" placeholder="Cheque / UPI Ref" />
+                        <span asp-validation-for="TransactionReference" class="text-danger"></span>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">Submit Payment</button>
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

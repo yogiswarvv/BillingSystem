@@ -1,0 +1,123 @@
+@model BillingSystem.DTOs.BillCalculationResultDto
+
+@{
+    ViewData["Title"] = "Billing Summary";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Billing Summary</h4>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-4">
+                    <div>
+                        <h5 class="text-muted">Patient Details</h5>
+                        <p class="h4">@Model.PatientName</p>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted">Date</small>
+                        <p class="fw-bold">@DateTime.Now.ToString("dd MMM yyyy")</p>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Description</th>
+                                <th class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Base Fee -->
+                            <tr>
+                                <td>Consultation Fee</td>
+                                <td class="text-end">@Model.BaseConsultationFee.ToString("C")</td>
+                            </tr>
+
+                            <!-- Consolidated Items Loop -->
+                            @foreach (var item in Model.Items.Where(i => i.Type == BillingSystem.Models.BillItemType.Service))
+                            {
+                                <tr>
+                                    <td>@item.Description</td>
+                                    <td class="text-end">@item.Amount.ToString("C")</td>
+                                </tr>
+                            }
+                            
+                             <!-- Admission -->
+                             @foreach (var item in Model.Items.Where(i => i.Type == BillingSystem.Models.BillItemType.Admission))
+                            {
+                                <tr>
+                                    <td>@item.Description</td>
+                                    <td class="text-end">@item.Amount.ToString("C")</td>
+                                </tr>
+                            }
+
+                            <tr class="fw-bold table-info">
+                                <td>Gross Total</td>
+                                <td class="text-end">@Model.GrossTotal.ToString("C")</td>
+                            </tr>
+
+                            <!-- Discounts -->
+                            @if (Model.DiscountAmount > 0)
+                            {
+                                <tr class="text-success">
+                                    <td>High Value Discount</td>
+                                    <td class="text-end">-@Model.DiscountAmount.ToString("C")</td>
+                                </tr>
+                            }
+                            @if (Model.SeniorDiscountAmount > 0)
+                            {
+                                <tr class="text-success">
+                                    <td>Senior Citizen Discount</td>
+                                    <td class="text-end">-@Model.SeniorDiscountAmount.ToString("C")</td>
+                                </tr>
+                            }
+
+                            <!-- Insurance -->
+                            @if (Model.InsuranceDeduction > 0)
+                            {
+                                <tr class="text-primary">
+                                    <td>Insurance (@Model.InsuranceProvider)</td>
+                                    <td class="text-end">-@Model.InsuranceDeduction.ToString("C")</td>
+                                </tr>
+                            }
+
+                            <!-- Tax -->
+                            <tr>
+                                <td>Tax (8%)</td>
+                                <td class="text-end">@Model.TaxAmount.ToString("C")</td>
+                            </tr>
+
+                        </tbody>
+                        <tfoot class="table-dark">
+                            <tr>
+                                <td>Net Payable</td>
+                                <td class="text-end">@Model.FinalNetPayable.ToString("C")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                                <h6 class="my-0">Tax (8%)</h6>
+                            </div>
+                            <span class="text-danger">+@Model.TaxAmount.ToString("C")</span>
+                        </li>
+
+                        <!-- Final -->
+                        <li class="list-group-item d-flex justify-content-between bg-primary text-white">
+                            <span>Final Amount Payable</span>
+                            <strong>@Model.FinalNetPayable.ToString("C")</strong>
+                        </li>
+                    </ul>
+
+                    <div class="d-grid">
+                        <a asp-action="Create" asp-controller="Patient" class="btn btn-outline-secondary">Register New Patient</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

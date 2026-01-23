@@ -1,0 +1,286 @@
+@model BillingSystem.ViewModels.CashierBillingViewModel
+
+@{
+    ViewData["Title"] = "Cashier Billing Desk";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Billing Form -->
+        <div class="col-md-7">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-receipt"></i> New Bill Generation</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="PreviewBill" method="post" id="billingForm">
+                         <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                        <!-- Patient Section -->
+                        <h6 class="text-primary border-bottom pb-2 mb-3">Patient Details</h6>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label asp-for="PatientId" class="form-label">Patient ID</label>
+                                <div class="input-group">
+                                    <input asp-for="PatientId" class="form-control" id="txtPatientId" placeholder="Enter ID" />
+                                    <button type="button" class="btn btn-outline-secondary" id="btnLookup" title="Search"><i class="bi bi-search"></i></button>
+                                </div>
+                                <span asp-validation-for="PatientId" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Name</label>
+                                        <input type="text" class="form-control-plaintext fw-bold" id="lblPatientName" readonly value="@Model.PatientName" />
+                                        <input type="hidden" asp-for="PatientName" id="hdnPatientName" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label text-muted">Age</label>
+                                        <input type="text" class="form-control-plaintext" id="lblAge" readonly value="@Model.Age" />
+                                        <input type="hidden" asp-for="Age" id="hdnAge" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label text-muted">Senior?</label>
+                                        <input type="text" class="form-control-plaintext" id="lblSenior" readonly value="@(Model.IsSenior ? "YES" : "NO")" />
+                                         <input type="hidden" asp-for="IsSenior" id="hdnIsSenior" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Services Section -->
+                        <h6 class="text-primary border-bottom pb-2 mb-3 mt-4">Services & Admission</h6>
+                        <div class="mb-3">
+                            <label asp-for="SelectedServiceIds" class="form-label">Select Services</label>
+                            <select asp-for="SelectedServiceIds" class="form-select" asp-items="Model.AvailableServices" multiple style="height: 150px;">
+                            </select>
+                            <div class="form-text">Hold Ctrl/Cmd to select multiple services.</div>
+                            <span asp-validation-for="SelectedServiceIds" class="text-danger"></span>
+                        </div>
+                        
+                        <div class="row g-3">
+                             <div class="col-md-4">
+                                <label asp-for="AdmitDays" class="form-label">Admission Days</label>
+                                <input asp-for="AdmitDays" class="form-control" min="0" />
+                                <span asp-validation-for="AdmitDays" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <!-- Insurance Section -->
+                        <h6 class="text-primary border-bottom pb-2 mb-3 mt-4">Insurance Details</h6>
+                         <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" asp-for="HasInsurance" id="chkInsurance">
+                            <label class="form-check-label fw-bold" for="chkInsurance">Apply Insurance Coverage</label>
+                        </div>
+
+                        <div id="insuranceFields" class="p-3 bg-light rounded border @(Model.HasInsurance ? "" : "d-none")">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="ProviderName" class="form-label">Provider Name</label>
+                                    <input asp-for="ProviderName" class="form-control" />
+                                    <span asp-validation-for="ProviderName" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6">
+                                     <label asp-for="PolicyNumber" class="form-label">Policy Number</label>
+                                    <input asp-for="PolicyNumber" class="form-control" />
+                                    <span asp-validation-for="PolicyNumber" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="InsuranceCoverageType" class="form-label">Coverage Type</label>
+                                    <select asp-for="InsuranceCoverageType" class="form-select" asp-items="Html.GetEnumSelectList<BillingSystem.Models.InsuranceCoverageType>()">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                    <span asp-validation-for="InsuranceCoverageType" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6">
+                                     <label asp-for="InsurancePercent" class="form-label">Coverage %</label>
+                                    <div class="input-group">
+                                        <input asp-for="InsurancePercent" class="form-control" type="number" min="0" max="100" />
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <span asp-validation-for="InsurancePercent" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 d-grid">
+                            <button type="submit" class="btn btn-info text-white btn-lg"><i class="bi bi-calculator"></i> Calculate & Preview Bill</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="col-md-5">
+            @if (Model.BillPreview != null)
+            {
+                <div class="card shadow border-success">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="bi bi-file-earmark-check"></i> Bill Summary</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-striped mb-0">
+                            <tbody>
+                                <tr>
+                                    <td>Consultation Fee</td>
+                                    <td class="text-end">@Model.BillPreview.ConsultationFee.ToString("C")</td>
+                                </tr>
+                                <tr>
+                                    <td>Services Total</td>
+                                    <td class="text-end">@Model.BillPreview.ServicesTotal.ToString("C")</td>
+                                </tr>
+                                 @if (Model.BillPreview.AdmitAmount > 0)
+                                {
+                                    <tr>
+                                        <td>Room Charges</td>
+                                        <td class="text-end">@Model.BillPreview.AdmitAmount.ToString("C")</td>
+                                    </tr>
+                                }
+                                <tr class="fw-bold">
+                                    <td>Subtotal</td>
+                                    <td class="text-end">@((Model.BillPreview.ConsultationFee + Model.BillPreview.ServicesTotal + Model.BillPreview.AdmitAmount).ToString("C"))</td>
+                                </tr>
+                                 @if (Model.BillPreview.DiscountAmount > 0)
+                                {
+                                    <tr class="text-success">
+                                        <td>High Value Discount</td>
+                                        <td class="text-end">-@Model.BillPreview.DiscountAmount.ToString("C")</td>
+                                    </tr>
+                                }
+                                @if (Model.BillPreview.SeniorDiscount > 0)
+                                {
+                                    <tr class="text-success">
+                                        <td>Senior Citizen Discount</td>
+                                        <td class="text-end">-@Model.BillPreview.SeniorDiscount.ToString("C")</td>
+                                    </tr>
+                                }
+                                @if (Model.BillPreview.InsuranceDeduction > 0)
+                                {
+                                    <tr class="text-primary">
+                                        <td>Insurance Coverage</td>
+                                        <td class="text-end">-@Model.BillPreview.InsuranceDeduction.ToString("C")</td>
+                                    </tr>
+                                }
+                                <tr>
+                                    <td>Tax</td>
+                                    <td class="text-end small">@Model.BillPreview.TaxAmount.ToString("C")</td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="bg-dark text-white">
+                                <tr>
+                                    <td class="fs-5">Net Payable</td>
+                                    <td class="text-end fs-4 fw-bold">@Model.BillPreview.FinalAmount.ToString("C")</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="card-footer p-3">
+                         <form asp-action="ConfirmBill" method="post">
+                             <!-- Hidden Fields to Re-Submit the State -->
+                            <input type="hidden" asp-for="PatientId" />
+                            <input type="hidden" asp-for="PatientName" />
+                            <input type="hidden" asp-for="AdmitDays" />
+                            <input type="hidden" asp-for="HasInsurance" />
+                            <input type="hidden" asp-for="ProviderName" />
+                            <input type="hidden" asp-for="PolicyNumber" />
+                            <input type="hidden" asp-for="InsuranceCoverageType" />
+                            <input type="hidden" asp-for="InsurancePercent" />
+                            <input type="hidden" asp-for="Age" />
+                            <input type="hidden" asp-for="IsSenior" />
+                            
+                            @if(Model.SelectedServiceIds != null)
+                            {
+                                @foreach(var id in Model.SelectedServiceIds)
+                                {
+                                    <input type="hidden" name="SelectedServiceIds" value="@id" />
+                                }
+                            }
+
+                            <button type="submit" class="btn btn-success btn-lg w-100 shadow-sm pulse-button">
+                                <i class="bi bi-check-circle-fill"></i> CONFIRM & GENERATE BILL
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-light text-center border mt-3">
+                    <i class="bi bi-arrow-left-circle fs-3 text-muted"></i>
+                    <p class="mb-0 text-muted">Fill details and click "Calculate" to view bill summary here.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function() {
+            // Insurance Toggle
+            $('#chkInsurance').change(function() {
+                if(this.checked) {
+                    $('#insuranceFields').removeClass('d-none');
+                } else {
+                    $('#insuranceFields').addClass('d-none');
+                }
+            });
+
+            // Patient Lookup
+            function performLookup() {
+                var pid = $('#txtPatientId').val();
+                if(!pid) { alert('Please enter Patient ID'); return; }
+                
+                // Show a simple loading state
+                $('#btnLookup').html('<span class="spinner-border spinner-border-sm" role="status"></span>');
+                
+                $.get('@Url.Action("GetPatientById", "PatientLookup")?patientId=' + pid)
+                .done(function(data) {
+                    $('#lblPatientName').val(data.fullName);
+                    $('#hdnPatientName').val(data.fullName);
+                    
+                    $('#lblAge').val(data.age);
+                    $('#hdnAge').val(data.age);
+                    
+                    $('#lblSenior').val(data.isSenior ? "YES" : "NO");
+                    $('#hdnIsSenior').val(data.isSenior);
+
+                    // Auto-populate admission days if any
+                    $('input[name="AdmitDays"]').val(data.admitDays);
+                })
+                .fail(function() {
+                     alert('Patient not found!');
+                     $('#lblPatientName').val('');
+                     $('#hdnPatientName').val('');
+                })
+                .always(function() {
+                    $('#btnLookup').html('<i class="bi bi-search"></i>');
+                });
+            }
+
+            $('#btnLookup').click(function() {
+                performLookup();
+            });
+
+            // Auto-lookup on Enter key
+            $('#txtPatientId').keypress(function(e) {
+                if(e.which == 13) {
+                    e.preventDefault();
+                    performLookup();
+                }
+            });
+        });
+    </script>
+    <style>
+        .pulse-button {
+            animation: pulse 2s infinite;
+        }
+        @@keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); }
+            70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+        }
+    </style>
+}
