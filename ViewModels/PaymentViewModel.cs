@@ -11,8 +11,6 @@ namespace BillingSystem.ViewModels
         [Required(ErrorMessage = "Payment Mode is required")]
         public PaymentMode PaymentMode { get; set; }
 
-        [Required]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
         public decimal PaidAmount { get; set; }
 
         // Logic check for <= FinalAmount will be in Controller/Service
@@ -24,6 +22,8 @@ namespace BillingSystem.ViewModels
         public decimal PendingAmount { get; set; }
 
         // Legacy / Compatibility Properties
+        [Required]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
         [Display(Name = "Amount to Pay")]
         public decimal AmountToPay { get; set; } // Used by existing BillingController
         public decimal TotalAmount { get; set; } // Used by existing BillingController

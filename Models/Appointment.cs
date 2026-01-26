@@ -28,12 +28,14 @@ namespace BillingSystem.Models
         public string Status { get; set; } = "Scheduled";
 
         public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public bool IsPaid { get; set; } = false;
 
         // Navigation properties
         [ForeignKey("PatientId")]
         public virtual Patient Patient { get; set; } = null!;
 
         public virtual ICollection<LabOrder> LabOrders { get; set; } = new List<LabOrder>();
+        public virtual ICollection<Prescription> Prescriptions { get; set; } = new List<Prescription>();
         
         public int? DoctorId { get; set; }
 

@@ -1,0 +1,64 @@
+@model BillingSystem.ViewModels.BulkPrescriptionVM
+
+@{
+    ViewData["Title"] = "Prescribe Medications (Bulk)";
+}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow border-0">
+                <div class="card-header bg-success text-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-capsule"></i> Prescribe Medications</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-4">
+                        <span class="text-muted">Patient:</span> <strong class="fs-5">@Model.PatientName</strong>
+                    </div>
+
+                    <form asp-action="BulkCreate">
+                        <input type="hidden" asp-for="AppointmentId" />
+                        <input type="hidden" asp-for="PatientName" />
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold mb-3 text-uppercase small text-muted">Select Medicines to Prescribe</label>
+                            <div class="row row-cols-1 row-cols-md-2 g-3">
+                                @foreach (var medicine in Model.AvailableMedicines)
+                                {
+                                    <div class="col">
+                                        <div class="form-check p-3 border rounded h-100 hover-shadow transition">
+                                            <input class="form-check-input" type="checkbox" name="SelectedMedicineIds" value="@medicine.Value" id="med_@medicine.Value">
+                                            <label class="form-check-label w-100 cursor-pointer fw-bold" for="med_@medicine.Value">
+                                                @medicine.Text
+                                            </label>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <span asp-validation-for="SelectedMedicineIds" class="text-danger mt-2 d-block"></span>
+                        </div>
+
+                        <div class="alert alert-info border-0 mb-4 py-2">
+                            <small><i class="bi bi-info-circle"></i> Quantities will default to 1 unit. You can adjust the quantity on the Appointment Details page before the patient pays at the billing desk.</small>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-success btn-lg fw-bold border-0 shadow-sm">Confirm & Save Prescriptions</button>
+                            <a asp-controller="Appointment" asp-action="Details" asp-route-id="@Model.AppointmentId" class="btn btn-outline-secondary">Back to Appointment</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .transition { transition: all 0.2s ease-in-out; }
+    .hover-shadow:hover { 
+        background-color: #f8f9fa;
+        border-color: #198754 !important;
+        transform: translateY(-2px);
+    }
+    .cursor-pointer { cursor: pointer; }
+</style>

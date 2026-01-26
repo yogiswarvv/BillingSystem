@@ -7,6 +7,7 @@ namespace BillingSystem.Repositories
     public interface IRepository<T> where T : class
     {
         Task<IEnumerable<T>> GetAllAsync();
+        IQueryable<T> GetAllQueryable();
         Task<T?> GetByIdAsync(int id);
         Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
         Task AddAsync(T entity);
@@ -29,6 +30,11 @@ namespace BillingSystem.Repositories
         public async Task<IEnumerable<T>> GetAllAsync()
         {
             return await _dbSet.ToListAsync();
+        }
+
+        public IQueryable<T> GetAllQueryable()
+        {
+            return _dbSet.AsQueryable();
         }
 
         public async Task<T?> GetByIdAsync(int id)

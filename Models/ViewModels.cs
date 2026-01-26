@@ -7,19 +7,25 @@ namespace BillingSystem.ViewModels
     public class PatientRegistrationVM
     {
         [Required]
+        [MinLength(3, ErrorMessage = "First name must be at least 3 characters long.")]
+        [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "First name cannot contain numbers.")]
         [Display(Name = "First Name")]
         public string FirstName { get; set; } = string.Empty;
 
         [Required]
+        [MinLength(3, ErrorMessage = "Last name must be at least 3 characters long.")]
+        [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "Last name cannot contain numbers.")]
         [Display(Name = "Last Name")]
         public string LastName { get; set; } = string.Empty;
 
         [Required]
+        [PastDate(ErrorMessage = "Date of birth must be a past date.")]
         [Display(Name = "Date of Birth")]
         public DateTime DateOfBirth { get; set; }
 
         [Required]
-        [RegularExpression(@"^[0-9]{10}$", ErrorMessage = "Invalid Mobile Number")]
+        [StringLength(10, MinimumLength = 10, ErrorMessage = "Mobile number must be exactly 10 digits.")]
+        [RegularExpression(@"^\d{10}$", ErrorMessage = "Mobile number must be 10 digits.")]
         [Display(Name = "Mobile Number")]
         public string MobileNumber { get; set; } = string.Empty;
 
@@ -36,6 +42,13 @@ namespace BillingSystem.ViewModels
         [Display(Name = "Admit Days (Default 0 if not admitted)")]
         [Range(0, 365)]
         public int AdmitDays { get; set; }
+
+        // Insurance
+        [Display(Name = "Insurance Provider (Optional)")]
+        public string? InsuranceProvider { get; set; }
+
+        [Display(Name = "Policy Number (Optional)")]
+        public string? PolicyNumber { get; set; }
     }
 
     public class AppointmentVM
@@ -61,6 +74,8 @@ namespace BillingSystem.ViewModels
         [MaxLength(500)]
         public string? Reason { get; set; }
 
+        public string? ReturnUrl { get; set; }
+
         public IEnumerable<SelectListItem>? Patients { get; set; }
         public IEnumerable<SelectListItem>? Doctors { get; set; }
     }
@@ -78,6 +93,7 @@ namespace BillingSystem.ViewModels
         public string Status { get; set; } = "Completed";
         
         public bool IsPaid { get; set; }
+        public string? ReturnUrl { get; set; }
     }
 
     public class BulkLabOrderVM
@@ -89,11 +105,51 @@ namespace BillingSystem.ViewModels
         public List<string> SelectedTestNames { get; set; } = new List<string>();
         
         public List<SelectListItem> AvailableTests { get; set; } = new List<SelectListItem>();
+        public List<string> ExistingTestNames { get; set; } = new List<string>();
+        public string? ReturnUrl { get; set; }
     }
 
     public class AppointmentDetailsVM
     {
         public Appointment Appointment { get; set; } = null!;
         public List<LabOrder> LabOrders { get; set; } = new List<LabOrder>();
+        public List<Prescription> Prescriptions { get; set; } = new List<Prescription>();
+    }
+
+    public class PrescriptionCreateVM
+    {
+        public int AppointmentId { get; set; }
+        public string PatientName { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Please select a medicine.")]
+        public int MedicineId { get; set; }
+        public List<SelectListItem> AvailableMedicines { get; set; } = new List<SelectListItem>();
+        
+        [Range(1, 100)]
+        public int SuggestedQuantity { get; set; }
+    }
+
+    public class BulkPrescriptionVM
+    {
+        public int AppointmentId { get; set; }
+        public string PatientName { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Please select at least one medicine.")]
+        public List<int> SelectedMedicineIds { get; set; } = new List<int>();
+        
+        public List<SelectListItem> AvailableMedicines { get; set; } = new List<SelectListItem>();
+    }
+
+    public class PrescriptionUpdateVM
+    {
+        public int PrescriptionId { get; set; }
+        public string MedicineName { get; set; } = string.Empty;
+        public string Dosage { get; set; } = string.Empty;
+        public int SuggestedQuantity { get; set; }
+        
+        [Range(0, 100, ErrorMessage = "Quantity must be between 0 and 100.")]
+        public int ActualQuantity { get; set; }
+        
+        public string Status { get; set; } = "Purchased";
     }
 }

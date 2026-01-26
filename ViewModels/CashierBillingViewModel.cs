@@ -14,9 +14,12 @@ namespace BillingSystem.ViewModels
         public int Age { get; set; }
         
         public bool IsSenior { get; set; }
+        
+        public bool IncludeConsultationFee { get; set; } = true;
 
         public List<int> SelectedServiceIds { get; set; } = new List<int>();
         public List<int> SelectedLabOrderIds { get; set; } = new List<int>();
+        public List<int> SelectedPrescriptionIds { get; set; } = new List<int>();
 
         public List<SelectListItem> AvailableServices { get; set; } = new List<SelectListItem>();
 
@@ -37,6 +40,8 @@ namespace BillingSystem.ViewModels
 
         [RequiredIfTrue(nameof(HasInsurance), ErrorMessage = "Policy Number is required if Has Insurance is checked")]
         public string? PolicyNumber { get; set; }
+
+        public List<SelectListItem> AvailableProviders { get; set; } = new();
 
         public BillPreviewViewModel? BillPreview { get; set; }
     }

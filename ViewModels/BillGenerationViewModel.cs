@@ -23,6 +23,7 @@ namespace BillingSystem.ViewModels
         [Display(Name = "Select Services")]
         public List<int> SelectedServiceIds { get; set; } = new();
         public List<SelectListItem> AvailableServices { get; set; } = new();
+        public List<SelectListItem> AvailableProviders { get; set; } = new();
 
         // Admissions
         public bool IsAdmitted { get; set; }

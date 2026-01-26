@@ -57,13 +57,23 @@
                     <!-- Admission & Metadata -->
                     <h5 class="border-bottom pb-2 mb-3 mt-4">Other Details</h5>
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-3">
                             <label asp-for="AdmitDays" class="form-label"></label>
                             <input asp-for="AdmitDays" class="form-control" type="number" min="0" />
                             <span asp-validation-for="AdmitDays" class="text-danger"></span>
-                            <small class="text-muted">Enter 0 if outpatient. Fee: 2000/day.</small>
+                            <small class="text-muted">Enter 0 for OPD.</small>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-3">
+                            <label asp-for="InsuranceProvider" class="form-label"></label>
+                            <input asp-for="InsuranceProvider" class="form-control" placeholder="e.g. Star Health" />
+                            <span asp-validation-for="InsuranceProvider" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="PolicyNumber" class="form-label"></label>
+                            <input asp-for="PolicyNumber" class="form-control" placeholder="e.g. SH-3001" />
+                            <span asp-validation-for="PolicyNumber" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-3">
                             <label asp-for="CreatedBy" class="form-label"></label>
                             <input asp-for="CreatedBy" class="form-control" placeholder="Staff Name" />
                             <span asp-validation-for="CreatedBy" class="text-danger"></span>
@@ -72,6 +82,7 @@
 
                     <div class="d-grid gap-2 mt-5">
                         <button type="submit" class="btn btn-success btn-lg">Complete Registration</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Back to Dashboard</a>
                     </div>
                 </form>
             </div>

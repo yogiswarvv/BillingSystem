@@ -9,8 +9,23 @@
         <div class="col-md-10 mx-auto">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="text-primary fw-bold"><i class="bi bi-info-circle"></i> Appointment Details</h2>
-                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to List</a>
+                <a asp-controller="Patient" asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
             </div>
+
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i> @TempData["SuccessMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["ErrorMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
 
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-primary text-white py-3">
@@ -34,10 +49,11 @@
                 </div>
             </div>
 
-            <div class="card shadow-sm border-0">
+            <!-- Lab Orders Card -->
+            <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center py-3">
                     <h5 class="mb-0"><i class="bi bi-clipboard-pulse"></i> Lab Orders</h5>
-                    <a asp-controller="LabOrder" asp-action="Create" asp-route-appointmentId="@Model.Appointment.AppointmentId" class="btn btn-warning btn-sm fw-bold">
+                    <a asp-controller="LabOrder" asp-action="Create" asp-route-appointmentId="@Model.Appointment.AppointmentId" asp-route-returnUrl="@(Context.Request.Path + Context.Request.QueryString)" class="btn btn-warning btn-sm fw-bold">
                         <i class="bi bi-plus-circle"></i> Order Multiple Tests
                     </a>
                 </div>
@@ -71,7 +87,15 @@
                                             </td>
                                             <td>@(lab.Results ?? "Awaiting Results")</td>
                                             <td class="text-center pe-4">
-                                                <a asp-controller="LabOrder" asp-action="UpdateStatus" asp-route-id="@lab.LabOrderId" class="btn btn-sm btn-outline-primary">Update</a>
+                                                <div class="btn-group">
+                                                    <a asp-controller="LabOrder" asp-action="UpdateStatus" asp-route-id="@lab.LabOrderId" asp-route-returnUrl="@(Context.Request.Path + Context.Request.QueryString)" class="btn btn-sm btn-outline-primary">Update</a>
+                                                    @if (lab.Status != "Completed" && !lab.IsPaid)
+                                                    {
+                                                        <form asp-controller="LabOrder" asp-action="Delete" asp-route-id="@lab.LabOrderId" asp-route-returnUrl="@(Context.Request.Path + Context.Request.QueryString)" method="post" onsubmit="return confirm('Are you sure you want to remove this lab order?');" class="d-inline">
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger ms-1">Delete</button>
+                                                        </form>
+                                                    }
+                                                </div>
                                             </td>
                                         </tr>
                                     }
@@ -81,6 +105,66 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Prescriptions Card -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0"><i class="bi bi-capsule"></i> Prescriptions & Pharmacy</h5>
+                    <a asp-controller="Prescription" asp-action="Create" asp-route-appointmentId="@Model.Appointment.AppointmentId" class="btn btn-success btn-sm fw-bold">
+                        <i class="bi bi-plus-circle"></i> Add Medication
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light text-secondary">
+                                <tr>
+                                    <th class="ps-4">Medicine Name</th>
+                                    <th>Suggested</th>
+                                    <th>Patient Choice</th>
+                                    <th>Status</th>
+                                    <th class="text-center pe-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.Prescriptions.Any())
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted small">No medications prescribed for this appointment.</td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var pre in Model.Prescriptions)
+                                    {
+                                        <tr>
+                                            <td class="ps-4">
+                                                <div class="fw-bold">@pre.Medicine.Name</div>
+                                                <small class="text-muted">@pre.Medicine.DosageStrength</small>
+                                            </td>
+                                            <td>@pre.SuggestedQuantity</td>
+                                            <td class="fw-bold text-primary">@pre.ActualQuantity</td>
+                                            <td>
+                                                <span class="badge @(pre.Status == "Suggested" ? "bg-warning text-dark" : "bg-success")">@pre.Status</span>
+                                                @if(pre.IsPaid) { <span class="badge bg-success ms-1">Paid</span> } else { <span class="badge bg-danger ms-1">Unpaid</span> }
+                                            </td>
+                                            <td class="text-center pe-4">
+                                                @if(!pre.IsPaid)
+                                                {
+                                                    <a asp-controller="Prescription" asp-action="Dispense" asp-route-id="@pre.PrescriptionId" class="btn btn-sm btn-outline-success">
+                                                        <i class="bi bi-cart"></i> Dispense / Pick Units
+                                                    </a>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>

@@ -11,6 +11,7 @@ namespace BillingSystem.Services
         Task<Bill?> GetBillByIdAsync(int billId);
         Task<IEnumerable<Bill>> GetBillsByPatientIdAsync(int patientId);
         Task<IEnumerable<ServiceMaster>> GetAllServicesAsync();
+        Task CompleteBillItemsAsync(int billId);
     }
 
     public class BillingService : IBillingService
@@ -35,56 +36,90 @@ namespace BillingSystem.Services
             if (patient == null) throw new Exception("Patient not found");
             result.PatientName = patient.FullName;
 
-            // 1. Consultation Fee
-            result.Items.Add(new BillItemDto 
-            { 
-                Description = "Consultation Fee", 
-                Amount = BaseConsultationFee, 
-                Type = BillItemType.Consultation 
-            });
-
-            // 2. Optional Services
-            decimal servicesTotal = 0;
-            if (request.SelectedServiceIds != null && request.SelectedServiceIds.Any())
+            // 1. Consultation Fee (Appointments)
+            decimal consultationFee = 0;
+            var unpaidAppointments = patient.Appointments.Where(a => !a.IsPaid && a.Status != "Cancelled").ToList();
+            foreach (var appt in unpaidAppointments)
             {
-                // In a real app, optimize this query
-                var services = await _unitOfWork.Services.FindAsync(s => request.SelectedServiceIds.Contains(s.ServiceId));
+                consultationFee += BaseConsultationFee;
+                result.Items.Add(new BillItemDto 
+                { 
+                    Description = $"Consultation Fee (Appt: {appt.AppointmentDate.ToShortDateString()})", 
+                    Amount = BaseConsultationFee, 
+                    Type = BillItemType.Consultation 
+                });
+            }
+            result.BaseConsultationFee = consultationFee;
+
+            // 2. Lab Orders
+            decimal labTotal = 0;
+            var unpaidLabs = patient.Appointments
+                .SelectMany(a => a.LabOrders)
+                .Where(l => !l.IsPaid) // include both Pending and Completed if unpaid
+                .ToList();
+
+            var services = await _unitOfWork.Services.GetAllAsync();
+
+            foreach (var lab in unpaidLabs)
+            {
+                var service = services.FirstOrDefault(s => s.ServiceName.Trim().Equals(lab.TestName.Trim(), StringComparison.OrdinalIgnoreCase));
+                decimal labCost = service?.Cost ?? 0;
                 
-                foreach (var service in services)
+                labTotal += labCost;
+                result.Items.Add(new BillItemDto
                 {
-                    // Assuming quantity 1 for now as per DTO simple list, usually map is better
-                    servicesTotal += service.Cost; 
+                    Description = $"Lab: {lab.TestName}",
+                    Amount = labCost,
+                    Type = BillItemType.Service
+                });
+            }
+            result.OptionalServicesTotal = labTotal;
+
+            // 3. Pharmacy Charges (Prescriptions)
+            decimal pharmacyTotal = 0;
+            var unpaidPrescriptions = patient.Appointments
+                .SelectMany(a => a.Prescriptions)
+                .Where(p => !p.IsPaid)
+                .ToList();
+
+            foreach (var pre in unpaidPrescriptions)
+            {
+                var medicine = await _unitOfWork.Repository<Medicine>().GetByIdAsync(pre.MedicineId);
+                if (medicine != null)
+                {
+                    var amount = pre.ActualQuantity * medicine.PricePerUnit;
+                    pharmacyTotal += amount;
                     result.Items.Add(new BillItemDto
                     {
-                        Description = service.ServiceName,
-                        Amount = service.Cost,
+                        Description = $"Med: {medicine.Name} x{pre.ActualQuantity}",
+                        Amount = amount,
                         Type = BillItemType.Service
                     });
                 }
             }
-            result.OptionalServicesTotal = servicesTotal;
+            result.PharmacyTotal = pharmacyTotal;
 
-            // 3. Admit Charges
+            // 4. Admit Charges
             decimal admitTotal = 0;
-            if (request.AdmitDays > 0)
+            var unpaidAdmissions = patient.Admissions.Where(a => !a.IsPaid).ToList();
+            foreach (var admit in unpaidAdmissions)
             {
-                // Check if patient has admission record or just calc? 
-                // Requirement DTO has AdmitDays. We use that for calculation.
-                // Default 2000 as per prompt
-                decimal feePerDay = 2000m; 
-                admitTotal = request.AdmitDays * feePerDay;
-                result.AdmitFeeTotal = admitTotal;
+                var days = (admit.DischargeDate ?? DateTime.Now).Date.Subtract(admit.AdmitDate.Date).Days;
+                if (days < 1) days = 1; // Min 1 day
                 
+                var amount = days * admit.FeePerDay;
+                admitTotal += amount;
                 result.Items.Add(new BillItemDto
                 {
-                    Description = $"Room Charges ({request.AdmitDays} days)",
-                    Amount = admitTotal,
+                    Description = $"Room Charges ({days} days @ {admit.FeePerDay:C})",
+                    Amount = amount,
                     Type = BillItemType.Admission
                 });
             }
+            result.AdmitFeeTotal = admitTotal;
 
-            // 4. Gross Total
-            result.GrossTotal = BaseConsultationFee + servicesTotal + admitTotal;
+            // 5. Gross Total
+            result.GrossTotal = consultationFee + labTotal + pharmacyTotal + admitTotal;
 
             // 5. Discount Rules
             decimal currentTotal = result.GrossTotal;
@@ -105,58 +140,48 @@ namespace BillingSystem.Services
                  result.Items.Add(new BillItemDto { Description = "Senior Citizen Discount (10%)", Amount = -result.SeniorDiscountAmount, Type = BillItemType.Discount });
             }
 
-            // 6. Insurance
-            // "Insurance applied AFTER discounts"
+            // 6. Production Insurance Integration
             if (request.ApplyInsurance)
             {
-                // Prioritize UI-provided insurance details
-                string? provider = null;
-                double? percent = request.InsurancePercent;
-                InsuranceCoverageType? type = request.InsuranceType;
+                var insuranceService = (IInsuranceService)request.GetType().Assembly.CreateInstance("BillingSystem.Services.InsuranceService", false, System.Reflection.BindingFlags.Default, null, new object[] { _unitOfWork }, null, null)!;
+                
+                string? policyNo = request.PolicyNumber;
+                string? providerName = request.ProviderName;
 
-                // Fallback to database if request is incomplete
-                var dbInsurance = patient.Insurances.FirstOrDefault(i => i.IsActive);
-                if (dbInsurance != null)
+                // Fallback to DB if not provided in request
+                if (string.IsNullOrEmpty(policyNo) || string.IsNullOrEmpty(providerName))
                 {
-                    provider ??= dbInsurance.ProviderName;
-                    percent ??= dbInsurance.CoveragePercent;
-                    type ??= dbInsurance.CoverageType;
+                    var dbInsurance = patient.Insurances.FirstOrDefault(i => i.IsActive);
+                    if (dbInsurance != null)
+                    {
+                        policyNo = dbInsurance.PolicyNumber;
+                        providerName = dbInsurance.ProviderName;
+                    }
                 }
 
-                if (type.HasValue && percent.HasValue)
+                if (!string.IsNullOrEmpty(policyNo) && !string.IsNullOrEmpty(providerName))
                 {
-                    result.InsuranceProvider = provider ?? "Manual Entry";
-                    result.CoveragePercent = percent.Value;
-                    
-                    decimal insuranceBase = 0;
-                    switch (type.Value)
+                    var member = await insuranceService.ValidateRegistryMemberAsync(providerName, policyNo, patient.FullName, patient.DateOfBirth);
+                    if (member != null)
                     {
-                        case InsuranceCoverageType.FullBill:
-                            insuranceBase = currentTotal;
-                            break;
-                         case InsuranceCoverageType.OptionalServicesOnly:
-                            insuranceBase = result.OptionalServicesTotal; 
-                            break;
-                         case InsuranceCoverageType.AdmitFeeOnly:
-                            insuranceBase = result.AdmitFeeTotal;
-                            break;
-                         case InsuranceCoverageType.ConsultationFeeOnly:
-                            insuranceBase = result.BaseConsultationFee;
-                            break;
-                    }
-
-                    // Safety: Percent should be between 0 and 100
-                    var safePercent = Math.Max(0, Math.Min(100, percent.Value));
-                    result.InsuranceDeduction = insuranceBase * (decimal)(safePercent / 100.0);
+                    result.InsuranceProvider = member.ProviderName; 
+                    result.CoveragePercent = 100; // Visual only
                     
-                    // Cap insurance deduction if it exceeds the remaining bill
+                    result.InsuranceDeduction = await insuranceService.CalculateCoverageAsync(providerName, policyNo, currentTotal);
+                    
                     if(result.InsuranceDeduction > currentTotal) result.InsuranceDeduction = currentTotal;
 
                     currentTotal -= result.InsuranceDeduction;
                     
-                    result.Items.Add(new BillItemDto { Description = $"Insurance Coverage ({type})", Amount = -result.InsuranceDeduction, Type = BillItemType.Insurance });
+                    result.Items.Add(new BillItemDto 
+                    { 
+                        Description = $"Insurance Coverage (Policy: {policyNo} via {member.ProviderName} Registry)", 
+                        Amount = -result.InsuranceDeduction, 
+                        Type = BillItemType.Insurance 
+                    });
                 }
             }
+        }
             
             if (currentTotal < 0) currentTotal = 0;
 
@@ -209,18 +234,24 @@ namespace BillingSystem.Services
                     await _unitOfWork.Repository<BillItem>().AddAsync(billItem);
                 }
 
-                // Mark LabOrders as Paid
-                if (request.SelectedLabOrderIds != null && request.SelectedLabOrderIds.Any())
+                // NOTE: DO NOT MARK ITEMS AS PAID HERE. 
+                // Status is only finalized in CompleteBillItemsAsync upon physical payment.
+                
+                // 3. Finalize Insurance Claims
+                if (calc.InsuranceDeduction > 0)
                 {
-                    foreach (var labOrderId in request.SelectedLabOrderIds)
+                    var insuranceService = (IInsuranceService)request.GetType().Assembly.CreateInstance("BillingSystem.Services.InsuranceService", false, System.Reflection.BindingFlags.Default, null, new object[] { _unitOfWork }, null, null)!;
+                    
+                    string? policyNo = request.PolicyNumber;
+                    if (string.IsNullOrEmpty(policyNo))
                     {
-                        var labOrder = await _unitOfWork.Repository<LabOrder>().GetByIdAsync(labOrderId);
-                        if (labOrder != null)
-                        {
-                            labOrder.IsPaid = true;
-                            labOrder.Status = "Paid"; // Automatically update status to Paid for clinical visibility
-                            _unitOfWork.Repository<LabOrder>().Update(labOrder);
-                        }
+                         var insurances = await _unitOfWork.Repository<Insurance>().FindAsync(i => i.PatientId == request.PatientId && i.IsActive);
+                         policyNo = insurances.FirstOrDefault()?.PolicyNumber;
+                    }
+
+                    if (!string.IsNullOrEmpty(policyNo))
+                    {
+                        await insuranceService.SubmitClaimAsync(bill.BillId, policyNo, calc.InsuranceDeduction);
                     }
                 }
 
@@ -249,6 +280,47 @@ namespace BillingSystem.Services
         public async Task<IEnumerable<Bill>> GetBillsByPatientIdAsync(int patientId)
         {
             return await _unitOfWork.Bills.GetBillsByPatientIdAsync(patientId);
+        }
+
+        public async Task CompleteBillItemsAsync(int billId)
+        {
+            var bill = await _unitOfWork.Bills.GetBillWithDetailsAsync(billId);
+            if (bill == null) return;
+
+            var patient = await _unitOfWork.Patients.GetPatientWithDetailsAsync(bill.PatientId);
+            if (patient == null) return;
+
+            // Mark Appointments
+            foreach (var appt in patient.Appointments.Where(a => !a.IsPaid && a.Status != "Cancelled"))
+            {
+                appt.IsPaid = true;
+                _unitOfWork.Repository<Appointment>().Update(appt);
+            }
+
+            // Mark Lab Orders
+            foreach (var lab in patient.Appointments.SelectMany(a => a.LabOrders).Where(l => !l.IsPaid))
+            {
+                lab.IsPaid = true;
+                if (lab.Status == "Pending") lab.Status = "Ready for Processing";
+                _unitOfWork.Repository<LabOrder>().Update(lab);
+            }
+
+            // Mark Prescriptions
+            foreach (var pre in patient.Appointments.SelectMany(a => a.Prescriptions).Where(p => !p.IsPaid))
+            {
+                pre.IsPaid = true;
+                pre.Status = "Purchased";
+                _unitOfWork.Repository<Prescription>().Update(pre);
+            }
+
+            // Mark Admissions
+            foreach (var admit in patient.Admissions.Where(a => !a.IsPaid))
+            {
+                admit.IsPaid = true;
+                _unitOfWork.Repository<Admission>().Update(admit);
+            }
+
+            await _unitOfWork.CompleteAsync();
         }
     }
 }

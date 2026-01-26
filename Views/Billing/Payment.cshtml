@@ -1,71 +1,60 @@
 @model BillingSystem.ViewModels.PaymentViewModel
-@using BillingSystem.Models
 
 @{
-    ViewData["Title"] = "Process Payment";
+    ViewData["Title"] = "Collect Payment";
 }
 
-<div class="row justify-content-center mt-5">
-    <div class="col-md-6">
-        <div class="card shadow">
-            <div class="card-header bg-success text-white">
-                <h4 class="mb-0">Process Payment</h4>
-            </div>
-            <div class="card-body">
-                <dl class="row mb-4">
-                    <dt class="col-sm-4">Patient Name</dt>
-                    <dd class="col-sm-8">@Model.PatientName</dd>
-
-                    <dt class="col-sm-4">Total Bill Amount</dt>
-                    <dd class="col-sm-8">@Model.TotalAmount.ToString("C")</dd>
-
-                    <dt class="col-sm-4">Pending Amount</dt>
-                    <dd class="col-sm-8 text-danger fw-bold">@Model.PendingAmount.ToString("C")</dd>
-                </dl>
-
-                <hr />
-
-                <form asp-action="Payment" method="post">
-                    <input type="hidden" asp-for="BillId" />
-                    <input type="hidden" asp-for="PatientName" />
-                    <input type="hidden" asp-for="TotalAmount" />
-                    <input type="hidden" asp-for="PendingAmount" />
-
-                    <div class="text-danger" asp-validation-summary="ModelOnly"></div>
-
-                    <div class="mb-3">
-                        <label asp-for="AmountToPay" class="form-label">Amount to Pay</label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input asp-for="AmountToPay" class="form-control" />
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-credit-card"></i> Final Payment Collection</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center mb-4">
+                        <i class="bi bi-person-check fs-2 me-3"></i>
+                        <div>
+                            <div class="small opacity-75">Billing For:</div>
+                            <div class="fs-5 fw-bold">@Model.PatientName</div>
                         </div>
-                        <span asp-validation-for="AmountToPay" class="text-danger"></span>
                     </div>
 
-                    <div class="mb-3">
-                        <label asp-for="PaymentMode" class="form-label">Payment Mode</label>
-                        <select asp-for="PaymentMode" class="form-select" asp-items="Html.GetEnumSelectList<PaymentMode>()">
-                            <option value="">Select Mode</option>
-                        </select>
-                        <span asp-validation-for="PaymentMode" class="text-danger"></span>
-                    </div>
+                    <form asp-action="Payment" method="post">
+                        <input type="hidden" asp-for="BillId" />
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted">Amount Payable</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-light border-end-0">₹</span>
+                                <input type="text" class="form-control bg-light border-start-0 fw-bold text-success fs-3" readonly value="@Model.AmountToPay.ToString("N2")" />
+                                <input type="hidden" asp-for="AmountToPay" />
+                            </div>
+                        </div>
 
-                    <div class="mb-3">
-                        <label asp-for="TransactionReference" class="form-label">Transaction Ref (Optional)</label>
-                        <input asp-for="TransactionReference" class="form-control" placeholder="Cheque / UPI Ref" />
-                        <span asp-validation-for="TransactionReference" class="text-danger"></span>
-                    </div>
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label asp-for="PaymentMode" class="form-label fw-bold">Payment Mode</label>
+                                <select asp-for="PaymentMode" class="form-select" asp-items="Html.GetEnumSelectList<BillingSystem.Models.PaymentMode>()"></select>
+                            </div>
+                            <div class="col-md-12">
+                                <label asp-for="TransactionReference" class="form-label fw-bold">Transaction Reference (Optional)</label>
+                                <input asp-for="TransactionReference" class="form-control" placeholder="UPI ID, Card Last 4, or Cash Tray ID" />
+                            </div>
+                        </div>
 
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg">Submit Payment</button>
-                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
-                    </div>
-                </form>
+                        <div class="d-grid gap-2 mt-5">
+                            <button type="submit" class="btn btn-primary btn-lg fw-bold shadow">
+                                <i class="bi bi-wallet2"></i> Process Payment & Settle Records
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">Back to Billing Desk</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="text-center mt-3 text-muted small">
+                <i class="bi bi-shield-lock"></i> All transactions are secure and encrypted.
             </div>
         </div>
     </div>
 </div>
-
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-}

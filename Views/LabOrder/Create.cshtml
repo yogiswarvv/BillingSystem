@@ -19,17 +19,23 @@
                     <form asp-action="Create">
                         <input type="hidden" asp-for="AppointmentId" />
                         <input type="hidden" asp-for="PatientName" />
+                        <input type="hidden" asp-for="ReturnUrl" />
 
                         <div class="mb-4">
                             <label class="form-label fw-bold d-block mb-3">Select Tests (N-number available)</label>
                             <div class="row g-2">
                                 @foreach (var test in Model.AvailableTests)
                                 {
+                                    var isOrdered = Model.ExistingTestNames.Contains(test.Value);
                                     <div class="col-md-6">
-                                        <div class="form-check p-2 border rounded hover-bg-light">
+                                        <div class="form-check p-2 border rounded hover-bg-light @(isOrdered ? "bg-warning bg-opacity-10" : "")">
                                             <input class="form-check-input ms-0" type="checkbox" name="SelectedTestNames" value="@test.Value" id="test_@test.Value.Replace(" ", "_")">
-                                            <label class="form-check-label ms-2" for="test_@test.Value.Replace(" ", "_")">
-                                                @test.Text
+                                            <label class="form-check-label ms-2 d-flex justify-content-between align-items-center" for="test_@test.Value.Replace(" ", "_")">
+                                                <span>@test.Text</span>
+                                                @if (isOrdered)
+                                                {
+                                                    <span class="badge bg-warning text-dark ms-2 small">Ordered Today</span>
+                                                }
                                             </label>
                                         </div>
                                     </div>
@@ -40,7 +46,14 @@
 
                         <div class="d-grid gap-2 mt-4">
                             <button type="submit" class="btn btn-warning btn-lg fw-bold">Confirm All Orders</button>
-                            <a asp-controller="Appointment" asp-action="Details" asp-route-id="@Model.AppointmentId" class="btn btn-light">Cancel</a>
+                            @if (!string.IsNullOrEmpty(Model.ReturnUrl))
+                            {
+                                <a href="@Model.ReturnUrl" class="btn btn-outline-secondary">Cancel and Go Back</a>
+                            }
+                            else
+                            {
+                                <a asp-controller="Appointment" asp-action="Details" asp-route-id="@Model.AppointmentId" class="btn btn-outline-secondary">Back to Appointment</a>
+                            }
                         </div>
                     </form>
                 </div>
@@ -48,6 +61,17 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const btn = this.querySelector('button[type="submit"]');
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+        });
+    </script>
+}
 
 <style>
     .hover-bg-light:hover {

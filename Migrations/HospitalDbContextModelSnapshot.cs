@@ -45,6 +45,9 @@ namespace BillingSystem.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(2000m);
 
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
 
@@ -81,6 +84,9 @@ namespace BillingSystem.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
 
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
@@ -330,6 +336,38 @@ namespace BillingSystem.Migrations
                     b.HasIndex("PatientId");
 
                     b.ToTable("Insurances", "Healthcare");
+
+                    b.HasData(
+                        new
+                        {
+                            InsuranceId = 1,
+                            CoveragePercent = 80.0,
+                            CoverageType = 1,
+                            IsActive = true,
+                            PatientId = 1,
+                            PolicyNumber = "POL12345",
+                            ProviderName = "Apollo Munich"
+                        },
+                        new
+                        {
+                            InsuranceId = 2,
+                            CoveragePercent = 50.0,
+                            CoverageType = 2,
+                            IsActive = true,
+                            PatientId = 1,
+                            PolicyNumber = "STAR999",
+                            ProviderName = "Star Health"
+                        },
+                        new
+                        {
+                            InsuranceId = 3,
+                            CoveragePercent = 100.0,
+                            CoverageType = 3,
+                            IsActive = true,
+                            PatientId = 2,
+                            PolicyNumber = "HDFC001",
+                            ProviderName = "HDFC Ergo"
+                        });
                 });
 
             modelBuilder.Entity("BillingSystem.Models.LabOrder", b =>
@@ -375,6 +413,341 @@ namespace BillingSystem.Migrations
                     b.HasIndex("AppointmentId");
 
                     b.ToTable("LabOrder", "Healthcare");
+                });
+
+            modelBuilder.Entity("BillingSystem.Models.Medicine", b =>
+                {
+                    b.Property<int>("MedicineId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MedicineId"));
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DosageStrength")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("PricePerUnit")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Stock")
+                        .HasColumnType("int");
+
+                    b.HasKey("MedicineId");
+
+                    b.ToTable("Medicines", "Healthcare");
+
+                    b.HasData(
+                        new
+                        {
+                            MedicineId = 1,
+                            Category = "Analgesic",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5754),
+                            DosageStrength = "500mg",
+                            ExpiryDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Paracetamol",
+                            PricePerUnit = 2m,
+                            Stock = 1000
+                        },
+                        new
+                        {
+                            MedicineId = 2,
+                            Category = "Antibiotic",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5763),
+                            DosageStrength = "250mg",
+                            ExpiryDate = new DateTime(2025, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Amoxicillin",
+                            PricePerUnit = 15m,
+                            Stock = 500
+                        },
+                        new
+                        {
+                            MedicineId = 3,
+                            Category = "Antihistamine",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5766),
+                            DosageStrength = "10mg",
+                            ExpiryDate = new DateTime(2026, 3, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Cetirizine",
+                            PricePerUnit = 5m,
+                            Stock = 800
+                        },
+                        new
+                        {
+                            MedicineId = 4,
+                            Category = "Antidiabetic",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5768),
+                            DosageStrength = "500mg",
+                            ExpiryDate = new DateTime(2027, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Metformin",
+                            PricePerUnit = 8m,
+                            Stock = 1200
+                        },
+                        new
+                        {
+                            MedicineId = 5,
+                            Category = "Statin",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5771),
+                            DosageStrength = "20mg",
+                            ExpiryDate = new DateTime(2025, 12, 31, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Atorvastatin",
+                            PricePerUnit = 25m,
+                            Stock = 300
+                        },
+                        new
+                        {
+                            MedicineId = 6,
+                            Category = "Proton Pump Inhibitor",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5773),
+                            DosageStrength = "20mg",
+                            ExpiryDate = new DateTime(2026, 8, 15, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Omeprazole",
+                            PricePerUnit = 12m,
+                            Stock = 500
+                        },
+                        new
+                        {
+                            MedicineId = 7,
+                            Category = "Bloop Pressure",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5775),
+                            DosageStrength = "5mg",
+                            ExpiryDate = new DateTime(2026, 5, 20, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Amlodipine",
+                            PricePerUnit = 10m,
+                            Stock = 600
+                        },
+                        new
+                        {
+                            MedicineId = 8,
+                            Category = "Analgesic",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5777),
+                            DosageStrength = "400mg",
+                            ExpiryDate = new DateTime(2026, 11, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Ibuprofen",
+                            PricePerUnit = 3m,
+                            Stock = 900
+                        },
+                        new
+                        {
+                            MedicineId = 9,
+                            Category = "Antibiotic",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5780),
+                            DosageStrength = "500mg",
+                            ExpiryDate = new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Azithromycin",
+                            PricePerUnit = 45m,
+                            Stock = 200
+                        },
+                        new
+                        {
+                            MedicineId = 10,
+                            Category = "Beta Blocker",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5782),
+                            DosageStrength = "500mg",
+                            ExpiryDate = new DateTime(2026, 2, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Metoprolol",
+                            PricePerUnit = 18m,
+                            Stock = 400
+                        },
+                        new
+                        {
+                            MedicineId = 11,
+                            Category = "Antihypertensive",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5784),
+                            DosageStrength = "500mg",
+                            ExpiryDate = new DateTime(2026, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Losartan",
+                            PricePerUnit = 22m,
+                            Stock = 350
+                        },
+                        new
+                        {
+                            MedicineId = 12,
+                            Category = "Anticonvulsant",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5787),
+                            DosageStrength = "300mg",
+                            ExpiryDate = new DateTime(2025, 9, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Gabapentin",
+                            PricePerUnit = 35m,
+                            Stock = 250
+                        },
+                        new
+                        {
+                            MedicineId = 13,
+                            Category = "Antidepressant",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5789),
+                            DosageStrength = "50mg",
+                            ExpiryDate = new DateTime(2025, 11, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Sertraline",
+                            PricePerUnit = 40m,
+                            Stock = 150
+                        },
+                        new
+                        {
+                            MedicineId = 14,
+                            Category = "Proton Pump Inhibitor",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5792),
+                            DosageStrength = "40mg",
+                            ExpiryDate = new DateTime(2026, 12, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Pantoprazole",
+                            PricePerUnit = 14m,
+                            Stock = 500
+                        },
+                        new
+                        {
+                            MedicineId = 15,
+                            Category = "Antiplatelet",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5794),
+                            DosageStrength = "75mg",
+                            ExpiryDate = new DateTime(2027, 6, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Aspirin",
+                            PricePerUnit = 1m,
+                            Stock = 2000
+                        },
+                        new
+                        {
+                            MedicineId = 16,
+                            Category = "Corticosteroid",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5796),
+                            DosageStrength = "5mg",
+                            ExpiryDate = new DateTime(2025, 3, 15, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Prednisone",
+                            PricePerUnit = 20m,
+                            Stock = 300
+                        },
+                        new
+                        {
+                            MedicineId = 17,
+                            Category = "Bronchodilator",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5798),
+                            DosageStrength = "100mcg",
+                            ExpiryDate = new DateTime(2025, 8, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Salbutamol",
+                            PricePerUnit = 150m,
+                            Stock = 100
+                        },
+                        new
+                        {
+                            MedicineId = 18,
+                            Category = "Diuretic",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5801),
+                            DosageStrength = "40mg",
+                            ExpiryDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Furosemide",
+                            PricePerUnit = 6m,
+                            Stock = 500
+                        },
+                        new
+                        {
+                            MedicineId = 19,
+                            Category = "Insulin",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5803),
+                            DosageStrength = "100U/ml",
+                            ExpiryDate = new DateTime(2025, 5, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Insulin Glargine",
+                            PricePerUnit = 800m,
+                            Stock = 50
+                        },
+                        new
+                        {
+                            MedicineId = 20,
+                            Category = "Antibiotic",
+                            CreatedDate = new DateTime(2026, 1, 26, 18, 0, 58, 206, DateTimeKind.Local).AddTicks(5805),
+                            DosageStrength = "500mg",
+                            ExpiryDate = new DateTime(2025, 10, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            Name = "Ciprofloxacin",
+                            PricePerUnit = 30m,
+                            Stock = 400
+                        });
+                });
+
+            modelBuilder.Entity("BillingSystem.Models.PastRecordPatient", b =>
+                {
+                    b.Property<int>("PastPatientId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PastPatientId"));
+
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ArchivedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ArchivedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Gender")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MobileNumber")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int>("OriginalPatientId")
+                        .HasColumnType("int");
+
+                    b.HasKey("PastPatientId");
+
+                    b.ToTable("PastRecordPatients", "Healthcare");
                 });
 
             modelBuilder.Entity("BillingSystem.Models.Patient", b =>
@@ -515,6 +888,45 @@ namespace BillingSystem.Migrations
                         .HasDatabaseName("IX_Payment_TransactionRef");
 
                     b.ToTable("Payments", "Healthcare");
+                });
+
+            modelBuilder.Entity("BillingSystem.Models.Prescription", b =>
+                {
+                    b.Property<int>("PrescriptionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PrescriptionId"));
+
+                    b.Property<int>("ActualQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AppointmentId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MedicineId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("PrescribedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("SuggestedQuantity")
+                        .HasColumnType("int");
+
+                    b.HasKey("PrescriptionId");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("MedicineId");
+
+                    b.ToTable("Prescriptions", "Healthcare");
                 });
 
             modelBuilder.Entity("BillingSystem.Models.ServiceMaster", b =>
@@ -667,12 +1079,119 @@ namespace BillingSystem.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("NormalizedName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("RoleNameIndex")
+                        .HasFilter("[NormalizedName] IS NOT NULL");
+
+                    b.ToTable("AspNetRoles", "Healthcare");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUser", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedEmail")
+                        .HasDatabaseName("EmailIndex");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique()
+                        .HasDatabaseName("UserNameIndex")
+                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+
+                    b.ToTable("AspNetUsers", "Healthcare");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("RoleId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("AspNetUserRoles", "Healthcare");
+                });
+
             modelBuilder.Entity("BillingSystem.Models.Admission", b =>
                 {
                     b.HasOne("BillingSystem.Models.Patient", "Patient")
                         .WithMany("Admissions")
                         .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Patient");
@@ -701,7 +1220,7 @@ namespace BillingSystem.Migrations
                     b.HasOne("BillingSystem.Models.Patient", "Patient")
                         .WithMany("Bills")
                         .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Patient");
@@ -723,7 +1242,7 @@ namespace BillingSystem.Migrations
                     b.HasOne("BillingSystem.Models.Patient", "Patient")
                         .WithMany("Insurances")
                         .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Patient");
@@ -745,7 +1264,7 @@ namespace BillingSystem.Migrations
                     b.HasOne("BillingSystem.Models.Patient", "Patient")
                         .WithMany("PatientServices")
                         .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("BillingSystem.Models.ServiceMaster", "ServiceMaster")
@@ -770,9 +1289,45 @@ namespace BillingSystem.Migrations
                     b.Navigation("Bill");
                 });
 
+            modelBuilder.Entity("BillingSystem.Models.Prescription", b =>
+                {
+                    b.HasOne("BillingSystem.Models.Appointment", "Appointment")
+                        .WithMany("Prescriptions")
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("BillingSystem.Models.Medicine", "Medicine")
+                        .WithMany()
+                        .HasForeignKey("MedicineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Medicine");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("BillingSystem.Models.Appointment", b =>
                 {
                     b.Navigation("LabOrders");
+
+                    b.Navigation("Prescriptions");
                 });
 
             modelBuilder.Entity("BillingSystem.Models.Bill", b =>

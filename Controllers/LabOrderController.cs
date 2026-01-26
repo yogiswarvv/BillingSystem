@@ -2,12 +2,14 @@ using BillingSystem.Data;
 using BillingSystem.Models;
 using BillingSystem.Services;
 using BillingSystem.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 namespace BillingSystem.Controllers
 {
+    [Authorize(Roles = "Admin,Lab")]
     public class LabOrderController : Controller
     {
         private readonly LabOrderService _labOrderService;
@@ -27,14 +29,25 @@ namespace BillingSystem.Controllers
             _context = context;
         }
 
-        public async Task<IActionResult> Index()
+        [Authorize(Roles = "Lab")]
+        public async Task<IActionResult> Index(string searchString)
         {
             var labOrders = await _labOrderService.GetAllLabOrdersAsync();
+            
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                labOrders = labOrders.Where(l => 
+                    l.Appointment.Patient.FullName.Contains(searchString, StringComparison.OrdinalIgnoreCase) || 
+                    l.Appointment.PatientId.ToString() == searchString
+                );
+            }
+
+            ViewBag.CurrentFilter = searchString;
             return View(labOrders);
         }
 
         [HttpGet]
-        public async Task<IActionResult> Create(int appointmentId)
+        public async Task<IActionResult> Create(int appointmentId, string? returnUrl = null)
         {
             var appointment = await _appointmentService.GetAppointmentByIdAsync(appointmentId);
             if (appointment == null) return NotFound();
@@ -42,30 +55,35 @@ namespace BillingSystem.Controllers
             // Fetch actual services from Billing Master
             var services = await _billingService.GetAllServicesAsync();
             
-            // Filter for Lab/Diagnostic related departments (Pathology, Radiology)
-            var availableTests = services
-                .Where(s => s.IsActive && (s.Department == "Pathology" || s.Department == "Radiology" || s.Department == "Diagnostics" || s.Department == "Cardiology"))
+            // Rule: Duplicate Lab Order Prevention (Daily UI Level)
+            // Get all tests ordered for this patient TODAY (across any appointment)
+            var today = DateTime.Today;
+            var existingTestNames = await _context.LabOrders
+                .Where(l => l.Appointment.PatientId == appointment.PatientId && 
+                            l.OrderDate.Date == today)
+                .Select(l => l.TestName)
+                .Distinct()
+                .ToListAsync();
+
+            // Rule: Multi-Test Visibility
+            // We now show ALL active services to ensure no diagnostic is accidentally hidden.
+            var availableTests = services.Where(s => s.IsActive).ToList();
+
+            var availableTestItems = availableTests
                 .Select(s => new SelectListItem 
                 { 
                     Value = s.ServiceName, 
-                    Text = $"[{s.ServiceCode}] {s.ServiceName} ({s.Cost:C})" 
+                    Text = $"[{s.ServiceCode}] {s.ServiceName}" 
                 })
                 .ToList();
-
-            // Fallback if no specific departments found - show all active services
-            if (!availableTests.Any())
-            {
-                availableTests = services
-                    .Where(s => s.IsActive)
-                    .Select(s => new SelectListItem { Value = s.ServiceName, Text = s.ServiceName })
-                    .ToList();
-            }
 
             var model = new BulkLabOrderVM
             {
                 AppointmentId = appointmentId,
                 PatientName = appointment.Patient.FullName,
-                AvailableTests = availableTests
+                AvailableTests = availableTestItems,
+                ExistingTestNames = existingTestNames,
+                ReturnUrl = returnUrl
             };
 
             return View(model);
@@ -76,18 +94,30 @@ namespace BillingSystem.Controllers
         {
             if (ModelState.IsValid)
             {
-                foreach (var testName in model.SelectedTestNames)
+                try
                 {
-                    var labOrder = new LabOrder
+                    foreach (var testName in model.SelectedTestNames)
                     {
-                        AppointmentId = model.AppointmentId,
-                        TestName = testName,
-                        Status = "Pending",
-                        IsPaid = false
-                    };
-                    await _labOrderService.CreateLabOrderAsync(labOrder);
+                        var labOrder = new LabOrder
+                        {
+                            AppointmentId = model.AppointmentId,
+                            TestName = testName,
+                            Status = "Pending",
+                            IsPaid = false
+                        };
+                        await _labOrderService.CreateLabOrderAsync(labOrder);
+                    }
+
+                    if (!string.IsNullOrEmpty(model.ReturnUrl))
+                    {
+                        return Redirect(model.ReturnUrl);
+                    }
+                    return RedirectToAction("Details", "Appointment", new { id = model.AppointmentId });
                 }
-                return RedirectToAction("Details", "Appointment", new { id = model.AppointmentId });
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", ex.Message);
+                }
             }
 
             // Re-populate tests if failed
@@ -100,8 +130,9 @@ namespace BillingSystem.Controllers
             return View(model);
         }
 
+        [Authorize(Roles = "Lab")]
         [HttpGet]
-        public async Task<IActionResult> UpdateStatus(int id)
+        public async Task<IActionResult> UpdateStatus(int id, string? returnUrl = null)
         {
             var labOrder = await _labOrderService.GetLabOrderByIdAsync(id);
             if (labOrder == null) return NotFound();
@@ -112,12 +143,14 @@ namespace BillingSystem.Controllers
                 TestName = labOrder.TestName,
                 Status = labOrder.Status,
                 Results = labOrder.Results,
-                IsPaid = labOrder.IsPaid
+                IsPaid = labOrder.IsPaid,
+                ReturnUrl = returnUrl
             };
 
             return View(model);
         }
 
+        [Authorize(Roles = "Lab")]
         [HttpPost]
         public async Task<IActionResult> UpdateStatus(LabOrderUpdateVM model)
         {
@@ -139,7 +172,36 @@ namespace BillingSystem.Controllers
 
             await _labOrderService.UpdateLabOrderStatusAsync(model.LabOrderId, model.Status, model.Results);
             
+            if (!string.IsNullOrEmpty(model.ReturnUrl))
+            {
+                return Redirect(model.ReturnUrl);
+            }
             return RedirectToAction("Details", "Appointment", new { id = labOrder.AppointmentId });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Delete(int id, string? returnUrl = null)
+        {
+            var labOrder = await _labOrderService.GetLabOrderByIdAsync(id);
+            if (labOrder == null) return NotFound();
+
+            int appointmentId = labOrder.AppointmentId;
+
+            try
+            {
+                await _labOrderService.DeleteLabOrderAsync(id);
+                TempData["SuccessMessage"] = "Lab order removed successfully.";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+            }
+
+            if (!string.IsNullOrEmpty(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+            return RedirectToAction("Details", "Appointment", new { id = appointmentId });
         }
     }
 }

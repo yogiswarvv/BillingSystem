@@ -11,6 +11,10 @@ namespace BillingSystem.DTOs
         public InsuranceCoverageType? InsuranceType { get; set; }
         public double? InsurancePercent { get; set; }
         public List<int> SelectedLabOrderIds { get; set; } = new List<int>();
+        public List<int> SelectedPrescriptionIds { get; set; } = new List<int>();
+        public bool IncludeConsultationFee { get; set; } = true;
+        public string? PolicyNumber { get; set; }
+        public string? ProviderName { get; set; }
     }
 
     public class BillCalculationResultDto
@@ -20,6 +24,7 @@ namespace BillingSystem.DTOs
         
         public List<BillItemDto> Items { get; set; } = new List<BillItemDto>();
         public decimal OptionalServicesTotal { get; set; }
+        public decimal PharmacyTotal { get; set; }
         public decimal AdmitFeeTotal { get; set; }
         
         public decimal GrossTotal { get; set; }

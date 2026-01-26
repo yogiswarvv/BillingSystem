@@ -57,9 +57,33 @@ namespace BillingSystem.Services
             if (string.IsNullOrWhiteSpace(labOrder.TestName))
                 throw new ArgumentException("Test name is required.");
 
-            var appointment = await _context.Appointments.FindAsync(labOrder.AppointmentId);
+            var appointment = await _context.Appointments.Include(a => a.Patient).FirstOrDefaultAsync(a => a.AppointmentId == labOrder.AppointmentId);
             if (appointment == null)
                 throw new InvalidOperationException($"Appointment with ID {labOrder.AppointmentId} not found.");
+
+            // Rule: Duplicate Lab Order Prevention (Appointment Level)
+            var isDuplicateForAppointment = await _context.LabOrders
+                .AnyAsync(l => l.AppointmentId == labOrder.AppointmentId && 
+                               l.TestName == labOrder.TestName);
+
+            if (isDuplicateForAppointment)
+            {
+                throw new InvalidOperationException($"A lab order for '{labOrder.TestName}' has already been placed for this appointment.");
+            }
+
+            // Rule: Duplicate ECG Prevention (Patient Level - Only if already Completed)
+            if (labOrder.TestName.Equals("ECG", StringComparison.OrdinalIgnoreCase))
+            {
+                var hasCompletedECG = await _context.LabOrders
+                    .AnyAsync(l => l.Appointment.PatientId == appointment.PatientId && 
+                                   l.TestName == "ECG" && 
+                                   l.Status == "Completed");
+                
+                if (hasCompletedECG)
+                {
+                    throw new InvalidOperationException("This patient has already completed an ECG. Duplicate ECG orders are not allowed.");
+                }
+            }
 
             labOrder.Appointment = appointment;
             labOrder.OrderDate = DateTime.Now;
@@ -100,9 +124,20 @@ namespace BillingSystem.Services
 
         public async Task DeleteLabOrderAsync(int id)
         {
-            var existing = await _unitOfWork.Repository<LabOrder>().GetByIdAsync(id);
+            var existing = await _context.LabOrders.FindAsync(id);
             if (existing != null)
             {
+                // Rule: Remove Lab Order Entered by Mistake validation
+                if (existing.Status == "Completed")
+                {
+                    throw new InvalidOperationException("Cannot delete a lab order that has already been processed (Completed).");
+                }
+
+                if (existing.IsPaid)
+                {
+                    throw new InvalidOperationException("Cannot delete a lab order for which payment has been completed.");
+                }
+
                 _unitOfWork.Repository<LabOrder>().Remove(existing);
                 await _unitOfWork.CompleteAsync();
             }

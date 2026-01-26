@@ -1,77 +1,125 @@
-@model IEnumerable<BillingSystem.DTOs.AppointmentListDto>
+@model BillingSystem.ViewModels.AppointmentDashboardVM
 
 @{
-    ViewData["Title"] = "Appointments";
+    ViewData["Title"] = "Appointment Dashboard";
 }
 
-<div class="container-fluid py-4">
-    <div class="row mb-4">
-        <div class="col-12 d-flex justify-content-between align-items-center">
-            <h2 class="text-primary fw-bold"><i class="bi bi-calendar-check"></i> Appointments</h2>
-            <a asp-action="Create" class="btn btn-primary btn-lg shadow-sm">
-                <i class="bi bi-calendar-plus"></i> Schedule New
-            </a>
+<div class="container py-4">
+    <!-- Header & Filter -->
+    <div class="row align-items-center mb-4 g-3">
+        <div class="col-md-6">
+            <h2 class="fw-bold text-primary mb-0"><i class="bi bi-calendar-event"></i> Appointments</h2>
+            <p class="text-muted small mb-0">Manage doctor schedules and patient visits.</p>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 rounded-pill">
+                <div class="card-body p-2 d-flex align-items-center">
+                    <form method="get" class="d-flex w-100 gap-2 px-2">
+                        <select name="doctorId" class="form-select border-0 bg-transparent" asp-items="Model.Doctors" onchange="this.form.submit()">
+                            <option value="">All Doctors</option>
+                        </select>
+                        <a asp-action="Create" class="btn btn-primary rounded-pill px-4 fw-bold text-nowrap">
+                            <i class="bi bi-plus-lg"></i> New Appt
+                        </a>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="card shadow-sm border-0">
+    <!-- Active Appointments -->
+    <div class="card shadow border-0 mb-5" style="border-radius: 20px;">
+        <div class="card-header bg-primary text-white py-3 border-0 d-flex justify-content-between align-items-center" style="border-radius: 20px 20px 0 0;">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2"></i> Scheduled Appointments</h5>
+            <span class="badge bg-white text-primary rounded-pill">@Model.ScheduledAppointments.Count Active</span>
+        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead class="bg-light text-secondary">
+                    <thead class="table-light">
                         <tr>
                             <th class="ps-4">Patient</th>
-                            <th>Date & Time</th>
                             <th>Doctor</th>
+                            <th>Date & Time</th>
                             <th>Reason</th>
-                            <th>Status</th>
-                            <th>Labs</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th class="text-end pe-4">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var appt in Model)
+                        @if (!Model.ScheduledAppointments.Any())
+                        {
+                            <tr><td colspan="5" class="text-center py-5 text-muted">No scheduled appointments found for this selection.</td></tr>
+                        }
+                        @foreach (var appt in Model.ScheduledAppointments)
                         {
                             <tr>
-                                <td class="ps-4 fw-bold">@appt.PatientName</td>
-                                <td>
-                                    <div>@appt.AppointmentDate.ToShortDateString()</div>
-                                    <small class="text-muted">@appt.AppointmentTime.ToString(@"hh\:mm")</small>
-                                </td>
-                                <td>@appt.DoctorName</td>
-                                <td class="text-truncate" style="max-width: 200px;">@appt.Reason</td>
-                                <td>
-                                    <span class="badge @(appt.Status == "Scheduled" ? "bg-info" : (appt.Status == "Completed" ? "bg-success" : "bg-danger"))">
-                                        @appt.Status
-                                    </span>
+                                <td class="ps-4">
+                                    <div class="fw-bold">@appt.PatientName</div>
+                                    <small class="text-muted">ID: #@appt.AppointmentId</small>
                                 </td>
                                 <td>
-                                    @if(appt.LabOrderCount > 0)
-                                    {
-                                        <span class="badge rounded-pill bg-warning text-dark">@appt.LabOrderCount Tests</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted small">None</span>
-                                    }
+                                    <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-3">@appt.DoctorName</span>
                                 </td>
-                                <td class="text-center pe-4">
-                                    <div class="btn-group btn-group-sm">
-                                        <a asp-action="Details" asp-route-id="@appt.AppointmentId" class="btn btn-outline-secondary" title="Details">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        @if(appt.Status == "Scheduled")
-                                        {
-                                            <a asp-controller="LabOrder" asp-action="Create" asp-route-appointmentId="@appt.AppointmentId" class="btn btn-outline-warning" title="Order Lab">
-                                                <i class="bi bi-clipboard-pulse"></i>
-                                            </a>
-                                        }
-                                    </div>
+                                <td>
+                                    <div class="fw-bold">@appt.AppointmentDate.ToString("dd MMM yyyy")</div>
+                                    <small class="text-muted">@appt.AppointmentTime.ToString(@"hh\:mm") @(DateTime.Today.Add(appt.AppointmentTime).ToString("tt"))</small>
+                                </td>
+                                <td class="small text-truncate" style="max-width: 200px;">@appt.Reason</td>
+                                <td class="text-end pe-4">
+                                    <a asp-action="Details" asp-route-id="@appt.AppointmentId" class="btn btn-sm btn-outline-primary border-0 rounded-circle"><i class="bi bi-eye"></i></a>
+                                    <form asp-action="Cancel" asp-route-id="@appt.AppointmentId" method="post" class="d-inline" onsubmit="return confirm('Cancel this appointment?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 rounded-circle"><i class="bi bi-x-circle"></i></button>
+                                    </form>
                                 </td>
                             </tr>
                         }
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancelled/History Section -->
+    <div class="card shadow border-0 bg-light bg-opacity-50" style="border-radius: 20px; border: 1px dashed #dee2e6 !important;">
+        <div class="card-header bg-secondary text-white py-3 border-0 d-flex justify-content-between align-items-center" style="border-radius: 20px 20px 0 0;">
+            <h6 class="mb-0 fw-bold text-uppercase small tracking-wider"><i class="bi bi-archive me-2"></i> Cancelled & Past Appointments</h6>
+            <button class="btn btn-sm btn-outline-light border-0" type="button" data-bs-toggle="collapse" data-bs-target="#cancelledTable">
+                <i class="bi bi-chevron-down"></i>
+            </button>
+        </div>
+        <div id="cancelledTable" class="collapse">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0 opacity-75">
+                        <thead class="table-dark table-active">
+                            <tr>
+                                <th class="ps-4">Patient</th>
+                                <th>Doctor</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.CancelledAppointments.Any())
+                            {
+                                <tr><td colspan="5" class="text-center py-4 text-muted small italic">No records in history.</td></tr>
+                            }
+                            @foreach (var appt in Model.CancelledAppointments)
+                            {
+                                <tr>
+                                    <td class="ps-4">@appt.PatientName</td>
+                                    <td>@appt.DoctorName</td>
+                                    <td>@appt.AppointmentDate.ToShortDateString()</td>
+                                    <td><span class="badge bg-danger rounded-pill">Cancelled</span></td>
+                                    <td class="text-end pe-4">
+                                        <a asp-action="Details" asp-route-id="@appt.AppointmentId" class="btn btn-sm btn-link text-muted"><i class="bi bi-info-circle"></i></a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

@@ -145,4 +145,7 @@ C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\Bill
 C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\BillingSystem.genruntimeconfig.cache
 C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\ref\BillingSystem.dll
 C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\BillingSystem.sourcelink.json
+C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\bin\Debug\net8.0\Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
+C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\bin\Debug\net8.0\Microsoft.AspNetCore.Identity.UI.dll
+C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\BillingSystem.MvcApplicationPartsAssemblyInfo.cs
 C:\Yogiswar Kancharla Projects\BillingSystem\BillingSystem\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt

@@ -1,0 +1,68 @@
+@{
+    ViewData["Title"] = "Billing Desk";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-success text-white py-3">
+                    <h4 class="mb-0 fw-bold"><i class="bi bi-receipt"></i> Billing & Invoicing</h4>
+                </div>
+                <div class="card-body p-5">
+                    <h5 class="text-center mb-4">Search Patient to Generate Bill</h5>
+                    <div class="input-group input-group-lg mb-3">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-success"></i></span>
+                        <input type="text" id="patientQuery" class="form-control border-start-0" placeholder="Enter Patient ID or Mobile Number..." autofocus>
+                        <button class="btn btn-success" type="button" id="btnSearch">Pull Records</button>
+                    </div>
+                    <div id="errorMsg" class="alert alert-danger d-none mt-3"></div>
+                    
+                    <div class="mt-5 pt-4 border-top">
+                        <div class="d-flex align-items-center text-muted">
+                            <i class="bi bi-info-circle fs-4 me-3"></i>
+                            <div>
+                                <small class="d-block fw-bold">Automatic Billing Policy:</small>
+                                <small>This desk automatically aggregates all unpaid consultations, lab tests, medicines, and room charges for the selected patient.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            function doSearch() {
+                var query = $('#patientQuery').val();
+                if (!query) return;
+
+                $('#btnSearch').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Searching...');
+                $('#errorMsg').addClass('d-none');
+
+                $.get('@Url.Action("SearchPatient", "Billing")?query=' + encodeURIComponent(query))
+                    .done(function(data) {
+                        if (data.success) {
+                            window.location.href = '@Url.Action("GenerateBill", "Billing")?patientId=' + data.id;
+                        } else {
+                            $('#errorMsg').text(data.message).removeClass('d-none');
+                        }
+                    })
+                    .fail(function() {
+                        $('#errorMsg').text('Error searching patient. Please try again.').removeClass('d-none');
+                    })
+                    .always(function() {
+                        $('#btnSearch').prop('disabled', false).text('Pull Records');
+                    });
+            }
+
+            $('#btnSearch').click(doSearch);
+            $('#patientQuery').keypress(function(e) {
+                if (e.which == 13) doSearch();
+            });
+        });
+    </script>
+}

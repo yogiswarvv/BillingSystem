@@ -11,10 +11,12 @@ namespace BillingSystem.Services
     public class PaymentService : IPaymentService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IBillingService _billingService;
 
-        public PaymentService(IUnitOfWork unitOfWork)
+        public PaymentService(IUnitOfWork unitOfWork, IBillingService billingService)
         {
             _unitOfWork = unitOfWork;
+            _billingService = billingService;
         }
 
         public async Task<int> ProcessPaymentAsync(Payment payment)
@@ -50,6 +52,9 @@ namespace BillingSystem.Services
                 bill.Status = BillStatus.Paid;
                 _unitOfWork.Bills.Update(bill);
                 await _unitOfWork.CompleteAsync();
+
+                // 5. Finalize Clinical Records
+                await _billingService.CompleteBillItemsAsync(bill.BillId);
             }
 
             return payment.PaymentId;

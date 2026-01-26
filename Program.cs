@@ -1,6 +1,8 @@
 using BillingSystem.Data;
 using BillingSystem.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using BillingSystem.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +11,23 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.AddDbContext<BillingSystem.Data.HospitalDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Comprehensive Identity Configuration (Using Slim Stores)
+builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => {
+    options.Password.RequireDigit = false;
+    options.Password.RequiredLength = 6;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+})
+.AddUserStore<SlimUserStore>()
+.AddRoleStore<SlimRoleStore>()
+.AddDefaultTokenProviders();
+
+// Role-based Cookie Configuration
+builder.Services.ConfigureApplicationCookie(options => {
+    options.LoginPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+});
 
 // Repositories
 builder.Services.AddScoped(typeof(BillingSystem.Repositories.IRepository<>), typeof(BillingSystem.Repositories.Repository<>));
@@ -32,20 +51,49 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<HospitalDbContext>();
-        // Check if we can connect
-        if (context.Database.CanConnect())
+        var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+
+        // Ensure Identity Tables / Data
+        await context.Database.MigrateAsync();
+
+        // 1. Seed Roles
+        string[] roles = { "Admin", "Billing", "Lab" };
+        foreach (var role in roles)
         {
-            // If DB exists, EnsureCreated won't seed. We manually seed if empty.
-            if (!context.Patients.Any())
+            if (!await roleManager.RoleExistsAsync(role))
             {
-                context.Patients.Add(new Patient { FirstName = "John", LastName = "Doe", DateOfBirth = new DateTime(1980, 1, 1), Gender = Gender.Male, MobileNumber = "9876543210", IsActive = true, CreatedDate = DateTime.Now });
-                context.Patients.Add(new Patient { FirstName = "Jane", LastName = "Smith", DateOfBirth = new DateTime(1960, 1, 1), Gender = Gender.Female, MobileNumber = "8765432109", IsActive = true, CreatedDate = DateTime.Now });
-                context.SaveChanges();
+                await roleManager.CreateAsync(new IdentityRole(role));
             }
         }
-        else
+
+        // 2. Seed Default Users
+        var users = new[] 
         {
-            context.Database.EnsureCreated();
+            new { Email = "admin@hospital.com", Role = "Admin", Pwd = "Admin@123" },
+            new { Email = "billing@hospital.com", Role = "Billing", Pwd = "Billing@123" },
+            new { Email = "lab@hospital.com", Role = "Lab", Pwd = "Lab@123" }
+        };
+
+        foreach (var u in users)
+        {
+            if (await userManager.FindByEmailAsync(u.Email) == null)
+            {
+                var user = new IdentityUser { UserName = u.Email, Email = u.Email, EmailConfirmed = true };
+                var result = await userManager.CreateAsync(user, u.Pwd);
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(user, u.Role);
+                }
+            }
+        }
+
+        // 3. Seed Patient Data if empty
+        if (!context.Patients.Any())
+        {
+            context.Patients.Add(new Patient { FirstName = "John", LastName = "Doe", DateOfBirth = new DateTime(1980, 1, 1), Gender = Gender.Male, MobileNumber = "9876543210", IsActive = true, CreatedDate = DateTime.Now });
+            context.Patients.Add(new Patient { FirstName = "Jane", LastName = "Smith", DateOfBirth = new DateTime(1960, 1, 1), Gender = Gender.Female, MobileNumber = "8765432109", IsActive = true, CreatedDate = DateTime.Now });
+            context.SaveChanges();
         }
     }
     catch (Exception ex)
@@ -59,7 +107,6 @@ using (var scope = app.Services.CreateScope())
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -68,6 +115,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(

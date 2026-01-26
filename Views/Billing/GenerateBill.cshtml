@@ -1,174 +1,188 @@
 @model BillingSystem.ViewModels.BillGenerationViewModel
 
 @{
-    ViewData["Title"] = "Generate Bill";
+    ViewData["Title"] = "Auto Bill Preview";
 }
 
-<div class="row">
-    <!-- Left Panel: Bill Generation Form -->
-    <div class="col-md-7">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="bi bi-receipt-cutoff"></i> New Bill Generation</h4>
-            </div>
-            <div class="card-body">
-                <form id="billingForm" asp-action="SubmitBill" method="post">
-                    <div class="text-danger" asp-validation-summary="ModelOnly"></div>
-                    <input type="hidden" asp-for="PatientId" id="hdnPatientId" />
-                    
-                    <!-- 1. Patient Search -->
-                    <div class="mb-4 border-bottom pb-4">
-                        <h5 class="text-muted mb-3"><i class="bi bi-person-bounding-box"></i> Patient Lookup</h5>
-                        
-                        <div class="input-group mb-3">
-                            <input type="text" id="txtMobileSearch" class="form-control form-control-lg" placeholder="Enter Mobile Number" />
-                            <button type="button" class="btn btn-outline-primary" id="btnSearch">
-                                <i class="bi bi-search"></i> Search User
-                            </button>
+<div class="container py-4">
+    <div class="row">
+        <!-- Patient Info Card -->
+        <div class="col-md-4">
+            <div class="card shadow border-0 mb-4 h-100">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-person-badge"></i> Billing Parameters</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4 d-flex align-items-center">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
+                            <i class="bi bi-person text-primary fs-3"></i>
                         </div>
-                        <span id="searchError" class="text-danger"></span>
-
-                        <div id="patientInfoPanel" class="alert alert-secondary d-none">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <strong>Name:</strong> <span id="lblPatientName"></span>
-                                </div>
-                                <div class="col-md-3">
-                                    <strong>Age:</strong> <span id="lblAge"></span>
-                                </div>
-                                <div class="col-md-3">
-                                    <span id="lblSeniorBadge" class="badge bg-success d-none">Senior Citizen</span>
-                                </div>
-                            </div>
+                        <div>
+                            <h5 class="mb-0 fw-bold">@Model.PatientName</h5>
+                            <span class="text-muted small">ID: #@Model.PatientId | Age: @Model.Age @(Model.IsSenior ? "(Sr. Citizen)" : "")</span>
                         </div>
                     </div>
 
-                    <!-- 2. Services Selection -->
-                     <div class="mb-4 border-bottom pb-4">
-                        <h5 class="text-muted mb-3"><i class="bi bi-activity"></i> Services & Tests</h5>
-                        <div class="mb-3">
-                            <label asp-for="SelectedServiceIds" class="form-label">Select Services (Hold Ctrl for multiple)</label>
-                            <select asp-for="SelectedServiceIds" asp-items="Model.AvailableServices" class="form-select" size="5" multiple>
-                            </select>
-                            <small class="text-muted">Select all applicable tests and services.</small>
-                        </div>
-                    </div>
-
-                    <!-- 3. Admission Details -->
-                    <div class="mb-4 border-bottom pb-4">
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" asp-for="IsAdmitted" id="chkAdmitted">
-                            <label class="form-check-label fw-bold" for="chkAdmitted">Patient Admitted?</label>
-                        </div>
-                        
-                        <div id="admissionFields" class="d-none ps-4 border-start border-3 border-warning">
-                            <div class="mb-3 w-50">
-                                <label asp-for="AdmitDays" class="form-label">Number of Days</label>
-                                <input asp-for="AdmitDays" class="form-control" min="0" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 4. Insurance Details -->
-                    <div class="mb-4">
+                    <div class="p-3 bg-light rounded border mb-3">
                         <div class="form-check form-switch mb-2">
                             <input class="form-check-input" type="checkbox" asp-for="HasInsurance" id="chkInsurance">
-                            <label class="form-check-label fw-bold" for="chkInsurance">Apply Insurance?</label>
+                            <label class="form-check-label fw-bold" for="chkInsurance">Apply Insurance Policy</label>
                         </div>
                         
-                         <p class="text-muted small fst-italic ms-4">
-                            * Uses existing insurance policy linked to patient.
-                        </p>
-                    </div>
-
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <button type="button" id="btnPreview" class="btn btn-warning me-md-2 btn-lg">
-                            <i class="bi bi-calculator"></i> Calculate Preview
-                        </button>
+                        <div id="insuranceDetails" class="@(Model.HasInsurance ? "" : "d-none")">
+                            <div class="row g-2 mt-2">
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="text-muted fw-bold">Verification Status:</small>
+                                        <span id="verificationBadge" class="badge bg-secondary">Pending</span>
+                                    </div>
+                                    <select asp-for="ProviderName" class="form-select form-select-sm" asp-items="Model.AvailableProviders" id="ddlProvider">
+                                        <option value="">-- Provider --</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <input asp-for="PolicyNumber" class="form-control form-control-sm" placeholder="Policy Number" id="txtPolicy" />
+                                </div>
+                                <div class="col-7">
+                                    <select asp-for="CoverageType" class="form-select form-select-sm" id="ddlCoverage" asp-items="Html.GetEnumSelectList<InsuranceCoverageType>()"></select>
+                                </div>
+                                <div class="col-5">
+                                    <div class="input-group input-group-sm">
+                                        <input asp-for="CoveragePercent" class="form-control" type="number" id="txtPercent" readonly />
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                                <div id="insuranceInfo" class="col-12 d-none">
+                                    <div class="alert alert-success py-1 px-2 mb-0 mt-1 small">
+                                        <strong>Plan:</strong> <span id="lblPlan"></span><br/>
+                                        <strong>Balance:</strong> <span id="lblBalance"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
-                    <!-- Hidden Submit trigger -->
-                     <button type="submit" id="btnRealSubmit" class="d-none"></button>
-                </form>
+                    <div class="alert alert-info border-0 py-2 small mb-0">
+                        <i class="bi bi-info-circle me-1"></i> All Lab Tests, Medicines, and Consultations are included <strong>automatically</strong>.
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Right Panel: Bill Preview -->
-    <div class="col-md-5">
-        <div class="sticky-top" style="top: 20px; z-index: 1;">
-            <div id="previewContainer">
-                <div class="alert alert-info text-center py-5">
-                    <i class="bi bi-file-text display-4"></i>
-                    <p class="mt-3">Fill form and click "Calculate Preview" to see bill details here.</p>
-                </div>
+        <!-- Bill Details -->
+        <div class="col-md-8">
+            <div id="billPreviewContainer">
+                @await Html.PartialAsync("_BillPreview", Model.BillPreview)
+            </div>
+
+            <div class="mt-4 d-flex justify-content-between align-items-center bg-white p-3 shadow-sm rounded border">
+                <a asp-action="Index" class="btn btn-outline-secondary px-4"><i class="bi bi-arrow-left"></i> Back to Desk</a>
+                <form asp-action="SubmitBill" method="post" id="finalBillForm">
+                    <input type="hidden" asp-for="PatientId" />
+                    <input type="hidden" asp-for="HasInsurance" id="hdnInsurance" />
+                    <input type="hidden" asp-for="CoverageType" id="hdnCoverage" />
+                    <input type="hidden" asp-for="CoveragePercent" id="hdnPercent" />
+                    <input type="hidden" asp-for="PolicyNumber" id="hdnPolicy" />
+                    <input type="hidden" asp-for="ProviderName" id="hdnProvider" />
+                    
+                    <button type="submit" class="btn btn-success btn-lg px-5 fw-bold shadow pulse-button">
+                        <i class="bi bi-check-circle-fill"></i> GENERATE FINAL BILL
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
         $(document).ready(function() {
-            // 1. Patient Search
-            $('#btnSearch').click(function() {
-                var mobile = $('#txtMobileSearch').val();
-                $('#searchError').text('');
+            function updatePreview() {
+                var isChecked = $('#chkInsurance').is(':checked');
                 
-                if(!mobile) {
-                    $('#searchError').text('Please enter mobile number.');
-                    return;
-                }
+                $('#billPreviewContainer').html('<div class="text-center py-5"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Updating billing statement...</p></div>');
 
-                $.get('/PatientLookup/SearchByMobile', { mobile: mobile })
+                // Update hidden inputs for final submission
+                $('#hdnInsurance').val(isChecked);
+                $('#hdnCoverage').val($('#ddlCoverage').val());
+                $('#hdnPercent').val($('#txtPercent').val());
+                
+                $.post('@Url.Action("GeneratePreview", "Billing")', { 
+                    patientId: @Model.PatientId, 
+                    applyInsurance: isChecked,
+                    insuranceType: $('#ddlCoverage').val(),
+                    insurancePercent: $('#txtPercent').val(),
+                    policyNumber: $('#txtPolicy').val(),
+                    providerName: $('#ddlProvider').val()
+                })
+                .done(function(data) {
+                    $('#billPreviewContainer').html(data);
+                });
+            }
+
+            // Bind triggers
+            $('#chkInsurance').change(function() {
+                if(this.checked) $('#insuranceDetails').removeClass('d-none');
+                else $('#insuranceDetails').addClass('d-none');
+                updatePreview();
+            });
+
+            $('#ddlCoverage, #txtPercent').change(updatePreview);
+
+            // Insurance Lookup Flavor
+            function fetchInsurance() {
+                var provider = $('#ddlProvider').val();
+                var policy = $('#txtPolicy').val();
+                
+                if (policy.length > 3) {
+                    $('#verificationBadge').removeClass('bg-success bg-danger bg-secondary').addClass('bg-warning text-dark').text('Verifying...');
+                    
+                    $.get('/PatientLookup/GetInsuranceDetails?provider=' + encodeURIComponent(provider) + '&policyNumber=' + encodeURIComponent(policy))
                     .done(function(data) {
-                        $('#hdnPatientId').val(data.id);
-                        $('#lblPatientName').text(data.name);
-                        $('#lblAge').text(data.age);
+                        $('#txtPercent').val(data.coveragePercent);
+                        $('#verificationBadge').removeClass('bg-warning text-dark').addClass('bg-success').html('<i class="bi bi-check-circle"></i> Verified');
+                        $('#insuranceInfo').removeClass('d-none');
+                        $('#lblPlan').text(data.planName);
+                        $('#lblBalance').text('₹' + data.remainingBalance.toLocaleString());
                         
-                        if(data.isSenior) $('#lblSeniorBadge').removeClass('d-none');
-                        else $('#lblSeniorBadge').addClass('d-none');
+                        // Sync with hidden fields for final submission
+                        $('#hdnPolicy').val(policy);
+                        $('#hdnProvider').val(provider);
 
-                        $('#patientInfoPanel').removeClass('d-none');
+                        // Refine button for claiming logic
+                        $('.pulse-button').html('<i class="bi bi-shield-check"></i> SETTLE BILL & CLAIM INSURANCE');
+                        $('.pulse-button').removeClass('btn-success').addClass('btn-primary');
+                        
+                        updatePreview();
                     })
                     .fail(function() {
-                         $('#hdnPatientId').val('');
-                         $('#patientInfoPanel').addClass('d-none');
-                         $('#searchError').text('Patient not found.');
+                        $('#verificationBadge').removeClass('bg-warning text-dark').addClass('bg-danger').html('<i class="bi bi-x-circle"></i> Invalid Policy');
+                        $('#insuranceInfo').addClass('d-none');
+                        $('#txtPercent').val(0);
+                        
+                        // Revert button
+                        $('.pulse-button').html('<i class="bi bi-check-circle-fill"></i> GENERATE FINAL BILL');
+                        $('.pulse-button').removeClass('btn-primary').addClass('btn-success');
+                        
+                        updatePreview();
                     });
-            });
-
-            // 2. Toggle Fields
-            $('#chkAdmitted').change(function() {
-                if($(this).is(':checked')) $('#admissionFields').removeClass('d-none');
-                else $('#admissionFields').addClass('d-none');
-            });
-
-            // 3. Preview Logic
-            $('#btnPreview').click(function() {
-                var patientId = $('#hdnPatientId').val();
-                if(!patientId) {
-                    alert('Please search and select a patient first.');
-                    return;
                 }
+            }
+            $('#ddlProvider, #txtPolicy').change(fetchInsurance);
 
-                var formData = $('#billingForm').serialize();
-
-                $.post('/Billing/GeneratePreview', formData)
-                    .done(function(partialView) {
-                        $('#previewContainer').html(partialView);
-                    })
-                    .fail(function(xhr) {
-                        $('#previewContainer').html('<div class="alert alert-danger">Error calculating bill: ' + xhr.responseText + '</div>');
-                    });
-            });
-            
-            // 4. Confirm Submit (Delegated because button inside partial)
-            $(document).on('click', '#btnConfirmBill', function() {
-                // Trigger real form submit
-                 $('#billingForm').submit();
-            });
+            // Initial setup
+            $('#hdnInsurance').val($('#chkInsurance').is(':checked'));
+            if ($('#chkInsurance').is(':checked') && $('#txtPolicy').val()) {
+                fetchInsurance();
+            }
         });
     </script>
+    <style>
+        .pulse-button { animation: pulse 2s infinite; }
+        @@keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); }
+            70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+        }
+    </style>
 }

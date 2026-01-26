@@ -13,7 +13,9 @@ namespace BillingSystem.Models
         public int PatientId { get; set; }
         public virtual Patient? Patient { get; set; }
 
+        [Required]
         public string ProviderName { get; set; } = string.Empty;
+
         public string? PolicyNumber { get; set; }
 
         [Range(0, 100)]
@@ -22,5 +24,11 @@ namespace BillingSystem.Models
         public InsuranceCoverageType CoverageType { get; set; }
 
         public bool IsActive { get; set; } = true;
+
+        // Unmapped helper properties for rich logic (optional)
+        [NotMapped]
+        public int? RegistryProviderID { get; set; }
+        [NotMapped]
+        public int? RegistryPlanID { get; set; }
     }
 }

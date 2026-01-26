@@ -1,0 +1,48 @@
+@model BillingSystem.ViewModels.PrescriptionCreateVM
+
+@{
+    ViewData["Title"] = "Prescribe Medicine";
+}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card shadow border-0">
+                <div class="card-header bg-success text-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-capsule"></i> Prescribe Medicine</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-4">
+                        <span class="text-muted">Patient Name:</span> <strong class="fs-5">@Model.PatientName</strong>
+                    </div>
+
+                    <form asp-action="Create">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        <input type="hidden" asp-for="AppointmentId" />
+                        <input type="hidden" asp-for="PatientName" />
+
+                        <div class="mb-3">
+                            <label asp-for="MedicineId" class="form-label fw-bold">Select Medicine</label>
+                            <select asp-for="MedicineId" class="form-select select2" asp-items="Model.AvailableMedicines">
+                                <option value="">-- Search Medicine --</option>
+                            </select>
+                            <span asp-validation-for="MedicineId" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="SuggestedQuantity" class="form-label fw-bold">Suggested Quantity</label>
+                            <input asp-for="SuggestedQuantity" class="form-control" type="number" min="1" max="100" />
+                            <span asp-validation-for="SuggestedQuantity" class="text-danger"></span>
+                            <div class="form-text small text-muted">Enter the total units (tablets/bottles) for this visit.</div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-success btn-lg fw-bold">Confirm Prescription</button>
+                            <a asp-controller="Appointment" asp-action="Details" asp-route-id="@Model.AppointmentId" class="btn btn-light">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

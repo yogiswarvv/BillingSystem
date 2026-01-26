@@ -10,12 +10,16 @@ namespace BillingSystem.Models
         public int PatientId { get; set; }
 
         [Required]
+        [MinLength(3, ErrorMessage = "First name must be at least 3 characters long.")]
         [MaxLength(100)]
+        [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "First name cannot contain numbers.")]
         [Display(Name = "First Name")]
         public string FirstName { get; set; } = string.Empty;
 
         [Required]
+        [MinLength(3, ErrorMessage = "Last name must be at least 3 characters long.")]
         [MaxLength(100)]
+        [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "Last name cannot contain numbers.")]
         [Display(Name = "Last Name")]
         public string LastName { get; set; } = string.Empty;
 
@@ -23,6 +27,7 @@ namespace BillingSystem.Models
         public string FullName => $"{FirstName} {LastName}";
 
         [Required]
+        [PastDate(ErrorMessage = "Date of birth must be a past date.")]
         [Display(Name = "Date of Birth")]
         public DateTime DateOfBirth { get; set; }
 
@@ -41,7 +46,8 @@ namespace BillingSystem.Models
         public Gender Gender { get; set; }
 
         [Required]
-        [RegularExpression(@"^[6-9]\d{9}$", ErrorMessage = "Mobile number must be 10 digits and start with 6-9.")]
+        [StringLength(10, MinimumLength = 10, ErrorMessage = "Mobile number must be exactly 10 digits.")]
+        [RegularExpression(@"^\d{10}$", ErrorMessage = "Mobile number must be 10 digits.")]
         public string MobileNumber { get; set; } = string.Empty;
 
         [EmailAddress]

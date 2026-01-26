@@ -1,11 +1,13 @@
 using BillingSystem.Models;
 using BillingSystem.Services;
 using BillingSystem.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace BillingSystem.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class AppointmentController : Controller
     {
         private readonly AppointmentService _appointmentService;
@@ -22,14 +24,29 @@ namespace BillingSystem.Controllers
             _doctorService = doctorService;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? doctorId)
         {
-            var appointments = await _appointmentService.GetAppointmentListAsync();
-            return View(appointments);
+            var allAppointments = await _appointmentService.GetAppointmentListAsync(doctorId);
+            var doctors = await _doctorService.GetAvailableDoctorsAsync();
+
+            var model = new AppointmentDashboardVM
+            {
+                ScheduledAppointments = allAppointments.Where(a => a.Status != "Cancelled").ToList(),
+                CancelledAppointments = allAppointments.Where(a => a.Status == "Cancelled").ToList(),
+                SelectedDoctorId = doctorId,
+                Doctors = doctors.Select(d => new SelectListItem 
+                { 
+                    Value = d.DoctorId.ToString(), 
+                    Text = $"{d.FirstName} {d.LastName} ({d.Specialization})",
+                    Selected = d.DoctorId == doctorId
+                })
+            };
+
+            return View(model);
         }
 
         [HttpGet]
-        public async Task<IActionResult> Create(int? patientId)
+        public async Task<IActionResult> Create(int? patientId, string? returnUrl = null)
         {
             var patients = await _patientService.GetAllPatientsAsync();
             var doctors = await _doctorService.GetAvailableDoctorsAsync();
@@ -37,8 +54,13 @@ namespace BillingSystem.Controllers
             var model = new AppointmentVM
             {
                 PatientId = patientId ?? 0,
-                Patients = patients.Select(p => new SelectListItem { Value = p.PatientId.ToString(), Text = p.FullName }),
-                Doctors = doctors.Select(d => new SelectListItem { Value = d.DoctorId.ToString(), Text = $"{d.FirstName} {d.LastName} ({d.Specialization})" })
+                Patients = patients.Select(p => new SelectListItem 
+                { 
+                    Value = p.PatientId.ToString(), 
+                    Text = p.FullName 
+                }),
+                Doctors = doctors.Select(d => new SelectListItem { Value = d.DoctorId.ToString(), Text = $"{d.FirstName} {d.LastName} ({d.Specialization})" }),
+                ReturnUrl = returnUrl
             };
 
             return View(model);
@@ -63,6 +85,11 @@ namespace BillingSystem.Controllers
                 };
 
                 await _appointmentService.CreateAppointmentAsync(appointment);
+                
+                if (!string.IsNullOrEmpty(model.ReturnUrl))
+                {
+                    return Redirect(model.ReturnUrl);
+                }
                 return RedirectToAction(nameof(Index));
             }
 
@@ -80,15 +107,42 @@ namespace BillingSystem.Controllers
             var appointment = await _appointmentService.GetAppointmentByIdAsync(id);
             if (appointment == null) return NotFound();
 
-            var labOrders = await _appointmentService.GetLabOrdersByAppointmentIdAsync(id);
-
             var model = new AppointmentDetailsVM
             {
                 Appointment = appointment,
-                LabOrders = labOrders
+                LabOrders = appointment.LabOrders.ToList(),
+                Prescriptions = appointment.Prescriptions.ToList()
             };
 
             return View(model);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableSlots(int doctorId, DateTime date)
+        {
+            var slots = await _appointmentService.GetAvailableSlotsAsync(doctorId, date);
+            var formattedSlots = slots.Select(s => new {
+                time = s.ToString(@"hh\:mm"),
+                display = DateTime.Today.Add(s).ToString("hh:mm tt")
+            });
+            return Json(formattedSlots);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Cancel(int id, string? returnUrl = null)
+        {
+            var appointment = await _appointmentService.GetAppointmentByIdAsync(id);
+            if (appointment != null)
+            {
+                appointment.Status = "Cancelled";
+                await _appointmentService.UpdateAppointmentAsync(appointment);
+            }
+
+            if (!string.IsNullOrEmpty(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+            return RedirectToAction(nameof(Index));
         }
     }
 }

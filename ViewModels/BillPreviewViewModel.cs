@@ -4,6 +4,7 @@ namespace BillingSystem.ViewModels
     {
         public decimal ConsultationFee { get; set; }
         public decimal ServicesTotal { get; set; }
+        public decimal PharmacyTotal { get; set; }
         public decimal AdmitAmount { get; set; }
         
         public decimal DiscountAmount { get; set; } // High value discount

@@ -39,7 +39,9 @@
                             </div>
                             <div class="col-md-6">
                                 <label asp-for="AppointmentTime" class="form-label fw-bold"></label>
-                                <input asp-for="AppointmentTime" class="form-control" type="time" />
+                                <select asp-for="AppointmentTime" class="form-select" id="timeSlotSelect">
+                                    <option value="">-- Select Slot --</option>
+                                </select>
                                 <span asp-validation-for="AppointmentTime" class="text-danger"></span>
                             </div>
                         </div>
@@ -52,7 +54,7 @@
 
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-lg">Schedule Now</button>
-                            <a asp-action="Index" class="btn btn-light text-secondary">Back to List</a>
+                            <a asp-controller="Patient" asp-action="Index" class="btn btn-outline-secondary">Back to Dashboard</a>
                         </div>
                     </form>
                 </div>
@@ -63,4 +65,41 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script>
+        $(document).ready(function () {
+            function loadSlots() {
+                var doctorId = $('#DoctorId').val();
+                var date = $('#AppointmentDate').val();
+                var slotSelect = $('#timeSlotSelect');
+
+                if (doctorId && date) {
+                    slotSelect.empty().append('<option value="">Loading slots...</option>');
+                    
+                    $.get('@Url.Action("GetAvailableSlots", "Appointment")', { doctorId: doctorId, date: date }, function (data) {
+                        slotSelect.empty().append('<option value="">-- Select Slot --</option>');
+                        if (data.length === 0) {
+                            slotSelect.append('<option value="">No available slots for this date</option>');
+                            if ($('#AppointmentDate').val() === '@DateTime.Now.ToString("yyyy-MM-dd")') {
+                                slotSelect.append('<option value="" disabled>All slots for today have passed.</option>');
+                            }
+                        } else {
+                            $.each(data, function (index, slot) {
+                                slotSelect.append($('<option></option>').val(slot.time).text(slot.display));
+                            });
+                        }
+                    });
+                } else {
+                    slotSelect.empty().append('<option value="">-- Select Slot --</option>');
+                }
+            }
+
+            $('#DoctorId, #AppointmentDate').change(loadSlots);
+
+            // Trigger initial load if values exist
+            if ($('#DoctorId').val() && $('#AppointmentDate').val()) {
+                loadSlots();
+            }
+        });
+    </script>
 }

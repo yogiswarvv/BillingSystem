@@ -6,9 +6,23 @@
 
 <div class="container-fluid py-4">
     <div class="row mb-4">
-        <div class="col-12">
+        <div class="col-md-6">
             <h2 class="text-primary fw-bold"><i class="bi bi-clipboard-pulse"></i> Lab Management</h2>
-            <p class="text-muted">Track and process patient diagnostic tests.</p>
+            <p class="text-muted">Track and process patient diagnostic tests. 
+                <a asp-controller="Patient" asp-action="Index" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+            </p>
+        </div>
+        <div class="col-md-6">
+            <form asp-action="Index" method="get" class="d-flex">
+                <div class="input-group">
+                    <input type="text" name="searchString" class="form-control" placeholder="Search by Patient Name or ID..." value="@ViewBag.CurrentFilter">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Search</button>
+                    @if (!string.IsNullOrEmpty(ViewBag.CurrentFilter))
+                    {
+                        <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+                    }
+                </div>
+            </form>
         </div>
     </div>
 

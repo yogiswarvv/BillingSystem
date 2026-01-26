@@ -20,5 +20,6 @@ namespace BillingSystem.Models
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal FeePerDay { get; set; } = 2000m;
+        public bool IsPaid { get; set; } = false;
     }
 }

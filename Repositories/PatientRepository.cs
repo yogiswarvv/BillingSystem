@@ -26,7 +26,10 @@ namespace BillingSystem.Repositories
             return await _context.Patients
                 .Include(p => p.Insurances)
                 .Include(p => p.Admissions)
-                .Include(p => p.PatientServices).ThenInclude(ps => ps.ServiceMaster)
+                .Include(p => p.Appointments)
+                    .ThenInclude(a => a.LabOrders)
+                .Include(p => p.Appointments)
+                    .ThenInclude(a => a.Prescriptions)
                 .FirstOrDefaultAsync(p => p.PatientId == id);
         }
     }

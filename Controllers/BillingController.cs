@@ -1,78 +1,143 @@
 using BillingSystem.DTOs;
+using BillingSystem.Models;
 using BillingSystem.Repositories;
 using BillingSystem.Services;
 using BillingSystem.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace BillingSystem.Controllers
 {
+    [Authorize(Roles = "Billing")]
     public class BillingController : Controller
     {
         private readonly IBillingService _billingService;
         private readonly IPatientService _patientService;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IInsuranceService _insuranceService;
 
-        public BillingController(IBillingService billingService, IPatientService patientService, IUnitOfWork unitOfWork)
+        public BillingController(IBillingService billingService, IPatientService patientService, IUnitOfWork unitOfWork, IInsuranceService insuranceService)
         {
             _billingService = billingService;
             _patientService = patientService;
             _unitOfWork = unitOfWork;
+            _insuranceService = insuranceService;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GenerateBill()
+        public IActionResult Index()
         {
-            var services = await _unitOfWork.Services.GetActiveServicesAsync();
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SearchPatient(string query)
+        {
+            try 
+            {
+                if (string.IsNullOrEmpty(query)) return Json(new { success = false, message = "Query is empty" });
+
+                // Try ID first
+                if (int.TryParse(query, out int id))
+                {
+                    var patient = await _patientService.GetPatientDetailsAsync(id);
+                    if (patient != null) return Json(new { success = true, id = patient.PatientId });
+                }
+
+                // Try mobile
+                var pMobile = await _patientService.GetPatientByMobileAsync(query);
+                if (pMobile != null) return Json(new { success = true, id = pMobile.PatientId });
+
+                return Json(new { success = false, message = "Patient not found" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Server Error: " + ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GenerateBill(int? patientId)
+        {
+            if (patientId == null) return RedirectToAction("Index", "Home");
+
+            var patient = await _unitOfWork.Patients.GetPatientWithDetailsAsync(patientId.Value);
+            if (patient == null) return NotFound();
+
+            // Guard: Check for existing UNPAID bill
+            var existingUnpaidBill = patient.Bills.FirstOrDefault(b => b.Status == BillStatus.Unpaid);
+            if (existingUnpaidBill != null)
+            {
+                TempData["WarningMessage"] = "This patient already has an unpaid bill. Please settle it before generating a new one.";
+                return RedirectToAction("Payment", new { billId = existingUnpaidBill.BillId });
+            }
+
+            var services = await _billingService.GetAllServicesAsync();
+
+            // Filter out lab/diagnostic tests from manual override (keep things like Nursing, Room, Ambulance, etc.)
+            var nonLabServices = services
+                .Where(s => s.Department != "Pathology" && 
+                            s.Department != "Radiology" && 
+                            s.Department != "Diagnostics" && 
+                            s.Department != "Cardiology");
+
+            var activeInsurance = patient.Insurances.FirstOrDefault(i => i.IsActive);
+
             var model = new BillGenerationViewModel
             {
-                AvailableServices = services.Select(s => new SelectListItem
-                {
-                    Value = s.ServiceId.ToString(),
-                    Text = $"{s.ServiceName} ({s.Cost:C})"
-                }).ToList()
+                PatientId = patient.PatientId,
+                PatientName = patient.FullName,
+                Age = patient.Age,
+                IsSenior = patient.IsSenior,
+                HasInsurance = activeInsurance != null,
+                ProviderName = activeInsurance?.ProviderName,
+                PolicyNumber = activeInsurance?.PolicyNumber,
+                CoverageType = activeInsurance?.CoverageType ?? InsuranceCoverageType.FullBill,
+                CoveragePercent = (decimal)(activeInsurance?.CoveragePercent ?? 0),
+                AvailableServices = nonLabServices.Select(s => new SelectListItem { Value = s.ServiceId.ToString(), Text = $"{s.ServiceName} ({s.Cost:C})" }).ToList(),
+                AvailableProviders = (await _insuranceService.GetLinkedProvidersAsync()).Select(p => new SelectListItem { Value = p.ProviderName, Text = p.ProviderName }).ToList()
             };
+
+            // Automated Calculation for initial load
+            var request = new BillCalculationRequestDto 
+            { 
+                PatientId = patientId.Value, 
+                ApplyInsurance = model.HasInsurance,
+                PolicyNumber = model.PolicyNumber,
+                ProviderName = model.ProviderName
+            };
+            var result = await _billingService.CalculateBillAsync(request);
+            
+            model.BillPreview = new BillGenerationPreviewViewModel
+            {
+                ConsultationFee = result.BaseConsultationFee,
+                AdmitAmount = result.AdmitFeeTotal,
+                OptionalServicesAmount = result.OptionalServicesTotal,
+                GrossTotal = result.GrossTotal,
+                Discounts = result.DiscountAmount + result.SeniorDiscountAmount,
+                InsuranceDeduction = result.InsuranceDeduction,
+                TaxAmount = result.TaxAmount,
+                FinalAmount = result.FinalNetPayable,
+                Items = result.Items
+            };
+
             return View(model);
         }
 
         [HttpPost]
-        public async Task<IActionResult> GeneratePreview(BillGenerationViewModel model)
+        public async Task<IActionResult> GeneratePreview(int patientId, bool applyInsurance, List<int> selectedServiceIds, InsuranceCoverageType? insuranceType, double? insurancePercent, string? policyNumber, string? providerName)
         {
-             // This action is called via AJAX to update the preview
-             // Map VM to DTO
              var request = new BillCalculationRequestDto
              {
-                 PatientId = model.PatientId,
-                 SelectedServiceIds = model.SelectedServiceIds,
-                 AdmitDays = model.IsAdmitted ? model.AdmitDays : 0,
-                 ApplyInsurance = model.HasInsurance
-                 // Note: DTO might need update if we want to pass explicit Insurance details 
-                 // instead of relying solely on stored patient insurance.
-                 // For this "Cashier" flow, the USER might overwrite or enter new insurance details.
-                 // But our current Logic (BillingService) uses "ApplyInsurance" bool and fetches from DB.
-                 // To support "Override" or "New" details in this Request, we'd need to update DTO/Service.
-                 // For now, let's assume we proceed with *stored* details or we update Patient details first?
-                 // The requirements say "Cashier selects... Insurance details".
-                 // Use Case: Cashier enters insurance for this bill.
-                 // SOLUTION: We should ideally update the Patient's insurance temporarily or permanently?
-                 // Or update CalculateBillAsync to accept insurance params.
+                 PatientId = patientId,
+                 ApplyInsurance = applyInsurance,
+                 SelectedServiceIds = selectedServiceIds,
+                 InsuranceType = insuranceType,
+                 InsurancePercent = insurancePercent,
+                 PolicyNumber = policyNumber,
+                 ProviderName = providerName
              };
-             
-             // LIMITATION: Existing Service calculates based on DB.
-             // WORKAROUND: We will stick to the existing Service logic which pulls from DB.
-             // If Cashier enters new Insurance, we'd implies updating the patient first.
-             // Let's assume for this specific flow, we are simulating the calculation
-             // based on what IS in the DB or what IS passed.
-             // If the user wants to pass insurance VALUES, we need to update DTO.
-             
-             // Let's check DTO:
-             // public class BillCalculationResultDto ...
-             
-             // Let's call service (it uses stored data).
-             // If we really need dynamic data not in DB, we need to refactor Service.
-             // For strict correctness with current codebase:
-             // We will assume "AppyInsurance" uses the patient's existing active insurance.
-             // If the form allows entering Provider/Policy, we arguably should SAVE that to patient or pass it.
              
              try 
              {
@@ -82,7 +147,7 @@ namespace BillingSystem.Controllers
                  {
                      ConsultationFee = result.BaseConsultationFee,
                      AdmitAmount = result.AdmitFeeTotal,
-                     OptionalServicesAmount = result.Items.Where(i => i.Type == Models.BillItemType.Service).Sum(i => i.Amount),
+                     OptionalServicesAmount = result.OptionalServicesTotal,
                      GrossTotal = result.GrossTotal,
                      Discounts = result.DiscountAmount + result.SeniorDiscountAmount,
                      InsuranceDeduction = result.InsuranceDeduction,
@@ -102,27 +167,15 @@ namespace BillingSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> SubmitBill(BillGenerationViewModel model)
         {
-            if (!ModelState.IsValid) return View("GenerateBill", model);
-
-            // 1. Update Patient Data if changed (Admissions, Insurance)?
-            // The requirement implies Cashier inputs these. 
-            // Ideally we should update the Patient Entity with these new details 
-            // BEFORE generating the bill, so the Service picks them up.
-            
-            var patient = await _unitOfWork.Patients.GetPatientWithDetailsAsync(model.PatientId);
-            if (patient == null) return NotFound();
-            // We'll use GetPatientWithDetailsAsync to be safe
-            // Actually _patientService.UpdatePatientAsync might be better if we expose it?
-            
-            // Quick approach: Update relevant fields if provided
-            // ... (Skipping complex update logic for brevity, assuming data aligns)
-            
             var request = new BillCalculationRequestDto
             {
                 PatientId = model.PatientId,
+                ApplyInsurance = model.HasInsurance,
                 SelectedServiceIds = model.SelectedServiceIds,
-                AdmitDays = model.IsAdmitted ? model.AdmitDays : 0,
-                ApplyInsurance = model.HasInsurance
+                InsuranceType = model.CoverageType,
+                InsurancePercent = (double)model.CoveragePercent,
+                PolicyNumber = model.PolicyNumber,
+                ProviderName = model.ProviderName
             };
 
             try 
@@ -133,9 +186,43 @@ namespace BillingSystem.Controllers
             catch(Exception ex)
             {
                 ModelState.AddModelError("", "Error generating bill: " + ex.Message);
-                // Repopulate lists
-                var services = await _unitOfWork.Services.GetActiveServicesAsync();
-                model.AvailableServices = services.Select(s => new SelectListItem { Value = s.ServiceId.ToString(), Text = s.ServiceName }).ToList();
+                
+                // Reload the model for the view
+                var patient = await _patientService.GetPatientDetailsAsync(model.PatientId);
+                if (patient != null)
+                {
+                    model.PatientName = patient.FullName;
+                    model.Age = patient.Age;
+                    model.IsSenior = patient.IsSenior;
+                    model.HasInsurance = patient.Insurances.Any(i => i.IsActive);
+                    
+                    var calcRequest = new BillCalculationRequestDto { PatientId = model.PatientId, ApplyInsurance = model.HasInsurance };
+                    var result = await _billingService.CalculateBillAsync(calcRequest);
+                    
+                    var allServices = await _billingService.GetAllServicesAsync();
+                    var nonLabServices = allServices
+                        .Where(s => s.Department != "Pathology" && 
+                                    s.Department != "Radiology" && 
+                                    s.Department != "Diagnostics" && 
+                                    s.Department != "Cardiology");
+
+                    model.AvailableServices = nonLabServices.Select(s => new SelectListItem { Value = s.ServiceId.ToString(), Text = $"{s.ServiceName} ({s.Cost:C})" }).ToList();
+                    model.AvailableProviders = (await _insuranceService.GetLinkedProvidersAsync()).Select(p => new SelectListItem { Value = p.ProviderName, Text = p.ProviderName }).ToList();
+
+                    model.BillPreview = new BillGenerationPreviewViewModel
+                    {
+                        ConsultationFee = result.BaseConsultationFee,
+                        AdmitAmount = result.AdmitFeeTotal,
+                        OptionalServicesAmount = result.OptionalServicesTotal,
+                        GrossTotal = result.GrossTotal,
+                        Discounts = result.DiscountAmount + result.SeniorDiscountAmount,
+                        InsuranceDeduction = result.InsuranceDeduction,
+                        TaxAmount = result.TaxAmount,
+                        FinalAmount = result.FinalNetPayable,
+                        Items = result.Items
+                    };
+                }
+                
                 return View("GenerateBill", model);
             }
         }
@@ -152,7 +239,7 @@ namespace BillingSystem.Controllers
             if (pending <= 0 && bill.Status == Models.BillStatus.Paid)
             {
                  // Already paid
-                 return RedirectToAction("Receipt", new { billId = billId }); // Future: Receipt View
+                 return RedirectToAction("Index", "Home");
             }
 
             var model = new PaymentViewModel
@@ -185,7 +272,7 @@ namespace BillingSystem.Controllers
 
                     await paymentService.ProcessPaymentAsync(payment);
 
-                    // Redirect to Receipt or Home
+                    // Redirect to Home
                     return RedirectToAction("Index", "Home"); 
                 }
                 catch(Exception ex)
