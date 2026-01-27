@@ -116,6 +116,18 @@ namespace BillingSystem.Controllers
         {
             if (ModelState.IsValid)
             {
+                // 0. Strict Uniqueness Check (Name + Mobile)
+                var exists = await _unitOfWork.Patients.GetAllQueryable()
+                    .AnyAsync(p => p.FirstName == model.FirstName && 
+                                   p.LastName == model.LastName && 
+                                   p.MobileNumber == model.MobileNumber);
+                
+                if (exists)
+                {
+                    ModelState.AddModelError("", "A patient with this Name and Mobile Number already exists.");
+                    return View(model);
+                }
+
                 // 1. Create Patient Entity
                 var patient = new Patient
                 {
@@ -159,7 +171,13 @@ namespace BillingSystem.Controllers
                     // 4. Register via Service
                     var patientId = await _patientService.RegisterPatientAsync(patient);
 
-                    // Redirect to Automatic Billing
+                    // Redirect Logic based on Role
+                    if (User.IsInRole("Admin"))
+                    {
+                        return RedirectToAction("Index");
+                    }
+
+                    // Redirect to Automatic Billing for Billing Staff
                     return RedirectToAction("GenerateBill", "Billing", new { patientId = patientId });
                 }
                 catch (Exception ex)
@@ -227,6 +245,7 @@ namespace BillingSystem.Controllers
             var patient = await _unitOfWork.Patients.GetByIdAsync(id);
             if (patient == null) return NotFound();
 
+            // 1. Check for Active Admission
             var alreadyAdmitted = (await _unitOfWork.Repository<Admission>().FindAsync(a => a.PatientId == id && a.DischargeDate == null)).Any();
             if (alreadyAdmitted)
             {
@@ -234,6 +253,27 @@ namespace BillingSystem.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
+            // 2. SAME-DAY ADMISSION CHECK (Task 39)
+            // If patient was discharged TODAY, reuse the record to prevent duplicate billing.
+            var today = DateTime.Today;
+            var dischargedToday = (await _unitOfWork.Repository<Admission>()
+                .FindAsync(a => a.PatientId == id && a.DischargeDate != null))
+                .Where(a => a.DischargeDate.Value.Date == today)
+                .OrderByDescending(a => a.DischargeDate)
+                .FirstOrDefault();
+
+            if (dischargedToday != null)
+            {
+                // Reactivate existing admission
+                dischargedToday.DischargeDate = null;
+                _unitOfWork.Repository<Admission>().Update(dischargedToday);
+                await _unitOfWork.CompleteAsync();
+                
+                TempData["SuccessMessage"] = "Patient re-admitted (Same-Day Continuation).";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            // 3. New Admission
             var admission = new Admission
             {
                 PatientId = id,
@@ -280,6 +320,14 @@ namespace BillingSystem.Controllers
         {
             try
             {
+                // 1. Payment Existence Check
+                var bills = await _unitOfWork.Bills.GetBillsByPatientIdAsync(id);
+                if (bills.Any(b => b.Status == BillStatus.Paid || b.Payments.Any()))
+                {
+                    TempData["ErrorMessage"] = "Request Denied: Cannot delete patient with existing payment records.";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 // In a real app, we'd get the user from User.Identity.Name
                 await _patientService.DeletePatientAsync(id, "ADMIN_UI");
                 TempData["SuccessMessage"] = "Patient record deleted successfully and moved to Past Records.";

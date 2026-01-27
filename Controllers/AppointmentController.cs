@@ -29,10 +29,48 @@ namespace BillingSystem.Controllers
             var allAppointments = await _appointmentService.GetAppointmentListAsync(doctorId);
             var doctors = await _doctorService.GetAvailableDoctorsAsync();
 
+            var now = DateTime.Now;
+
+            // 1. AUTO-UPDATE: Mark past "Scheduled" appointments as "Completed"
+            // If the appointment time has passed and they haven't been cancelled/processed, we assume they are completed.
+            var expiredAppointments = allAppointments
+                .Where(a => a.Status == "Scheduled" && 
+                           (a.AppointmentDate.Date < now.Date || (a.AppointmentDate.Date == now.Date && a.AppointmentTime <= now.TimeOfDay)))
+                .ToList();
+
+            if (expiredAppointments.Any())
+            {
+                // Fix: expiredAppointments is a DTO list. We need to fetch entities to update them via Service.
+                foreach (var apptDto in expiredAppointments)
+                {
+                    var apptEntity = await _appointmentService.GetAppointmentByIdAsync(apptDto.AppointmentId);
+                    if (apptEntity != null)
+                    {
+                        apptEntity.Status = "Completed";
+                        await _appointmentService.UpdateAppointmentAsync(apptEntity);
+                    }
+                }
+            }
+
             var model = new AppointmentDashboardVM
             {
-                ScheduledAppointments = allAppointments.Where(a => a.Status != "Cancelled").ToList(),
-                CancelledAppointments = allAppointments.Where(a => a.Status == "Cancelled").ToList(),
+                ScheduledAppointments = allAppointments
+                    .Where(a => a.Status == "Scheduled" && 
+                               (a.AppointmentDate.Date > now.Date || (a.AppointmentDate.Date == now.Date && a.AppointmentTime > now.TimeOfDay)))
+                    .OrderBy(a => a.AppointmentDate).ThenBy(a => a.AppointmentTime)
+                    .ToList(),
+
+                CompletedAppointments = allAppointments
+                    .Where(a => a.Status != "Cancelled" && 
+                               (a.AppointmentDate.Date < now.Date || (a.AppointmentDate.Date == now.Date && a.AppointmentTime <= now.TimeOfDay)))
+                    .OrderByDescending(a => a.AppointmentDate).ThenByDescending(a => a.AppointmentTime)
+                    .ToList(),
+
+                CancelledAppointments = allAppointments
+                    .Where(a => a.Status == "Cancelled")
+                    .OrderByDescending(a => a.AppointmentDate)
+                    .ToList(),
+                
                 SelectedDoctorId = doctorId,
                 Doctors = doctors.Select(d => new SelectListItem 
                 { 
@@ -143,6 +181,12 @@ namespace BillingSystem.Controllers
                 return Redirect(returnUrl);
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Delete(int id, string? returnUrl = null)
+        {
+            return await Cancel(id, returnUrl);
         }
     }
 }

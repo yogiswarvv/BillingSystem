@@ -28,6 +28,8 @@
 
                     <form asp-action="UpdateStatus">
                         <input type="hidden" asp-for="LabOrderId" />
+                        <input type="hidden" asp-for="ReturnUrl" />
+
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
                         <div class="mb-3">

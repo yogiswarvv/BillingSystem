@@ -283,5 +283,18 @@ namespace BillingSystem.Controllers
             
             return View(model);
         }
+        [HttpGet]
+        public async Task<IActionResult> PastBills(int patientId)
+        {
+            var patient = await _unitOfWork.Patients.GetPatientWithDetailsAsync(patientId);
+            if (patient == null) return NotFound();
+
+            var bills = await _unitOfWork.Bills.GetBillsByPatientIdAsync(patientId);
+            
+            ViewBag.PatientName = patient.FullName;
+            ViewBag.PatientId = patientId;
+
+            return View(bills.OrderByDescending(b => b.BillDate));
+        }
     }
 }

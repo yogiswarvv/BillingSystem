@@ -28,7 +28,7 @@
                                 <a class="nav-link btn btn-outline-success text-dark ms-2" asp-area="" asp-controller="Billing" asp-action="Index">💰 Billing Desk</a>
                             </li>
                         }
-                        @if (User.IsInRole("Admin") || User.IsInRole("Billing"))
+                        @if (User.IsInRole("Admin"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark fw-bold" asp-area="" asp-controller="Patient" asp-action="Index">👥 Patient Dashboard</a>

@@ -20,6 +20,11 @@
                         <div>
                             <h5 class="mb-0 fw-bold">@Model.PatientName</h5>
                             <span class="text-muted small">ID: #@Model.PatientId | Age: @Model.Age @(Model.IsSenior ? "(Sr. Citizen)" : "")</span>
+                            <div class="mt-2 text-center">
+                                <a asp-controller="Billing" asp-action="PastBills" asp-route-patientId="@Model.PatientId" target="_blank" class="btn btn-outline-info btn-sm rounded-pill w-100">
+                                    <i class="bi bi-clock-history"></i> View Past Bills
+                                </a>
+                            </div>
                         </div>
                     </div>
 

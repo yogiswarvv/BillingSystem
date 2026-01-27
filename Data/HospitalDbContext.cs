@@ -279,6 +279,20 @@ namespace BillingSystem.Data
                 new InsurancePlan { PlanID = 6, ProviderID = 3, PlanName = "Family Pro", CoveragePercentage = 100.00m, MaxBenefitPerClaim = 200000 }
             );
 
+            // 8. Insurance Member Registry (Restrict Delete)
+            modelBuilder.Entity<InsuranceMemberRegistry>(entity =>
+            {
+                entity.HasOne(m => m.Provider)
+                      .WithMany()
+                      .HasForeignKey(m => m.ProviderID)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(m => m.Plan)
+                      .WithMany()
+                      .HasForeignKey(m => m.PlanID)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
             // AM-1001 to AM-1020
             modelBuilder.Entity<InsuranceMemberRegistry>().HasData(
                 new InsuranceMemberRegistry { MemberID = 1, PolicyNumber = "AM-1001", ProviderID = 1, PlanID = 1, FullName = "Aarav Gupta", DateOfBirth = new DateTime(1985, 5, 10), RemainingBalance = 45000 },

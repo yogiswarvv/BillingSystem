@@ -30,10 +30,9 @@ namespace BillingSystem.Services
             var member = await GetMemberFromCorrectRegistryAsync(providerName, policyNumber);
             if (member == null) return null;
 
-            // Check Demographics (Case-Insensitive)
-            if (member.FullName.Trim().Equals(fullName.Trim(), StringComparison.OrdinalIgnoreCase) &&
-                member.DateOfBirth.Date == dob.Date &&
-                member.Status == "Active")
+            // Super Relaxed Validation: Only Policy Number matches (Implicit by lookup) 
+            // AND Status is Active. Name and DOB checks removed as per user request.
+            if (member.Status == "Active")
             {
                 return member;
             }
@@ -67,25 +66,30 @@ namespace BillingSystem.Services
 
         private async Task<FederatedMemberDetails?> GetMemberFromCorrectRegistryAsync(string providerName, string policyNumber)
         {
-            if (string.IsNullOrEmpty(providerName)) return null;
+            if (string.IsNullOrEmpty(policyNumber)) return null;
 
-            if (providerName.Contains("Apollo", StringComparison.OrdinalIgnoreCase))
-            {
-                var m = (await _unitOfWork.Repository<ApolloMunichRegistry>().FindAsync(x => x.PolicyNumber == policyNumber)).FirstOrDefault();
-                return m == null ? null : MapToFederated(m, "Apollo Munich");
-            }
-            else if (providerName.Contains("HDFC", StringComparison.OrdinalIgnoreCase))
-            {
-                var m = (await _unitOfWork.Repository<HDFCErgoRegistry>().FindAsync(x => x.PolicyNumber == policyNumber)).FirstOrDefault();
-                return m == null ? null : MapToFederated(m, "HDFC Ergo");
-            }
-            else if (providerName.Contains("Star", StringComparison.OrdinalIgnoreCase))
-            {
-                var m = (await _unitOfWork.Repository<StarHealthRegistry>().FindAsync(x => x.PolicyNumber == policyNumber)).FirstOrDefault();
-                return m == null ? null : MapToFederated(m, "Star Health");
-            }
+            // Fix: Query the centralized INSURANCE MEMBER REGISTRY table directly used by the Seed Data.
+            // The previous code looked for specific tables (ApolloMunichRegistry, etc.) which might be empty or not used.
+            // Since our Seed Data populates 'InsuranceMemberRegistry', we must query THAT table.
+            
+            var member = (await _unitOfWork.Repository<InsuranceMemberRegistry>()
+                .FindAsync(x => x.PolicyNumber == policyNumber && x.Status == "Active"))
+                .FirstOrDefault();
 
-            return null;
+            if (member == null) return null;
+
+            // Map Generic Registry Member to Federated Details
+            return new FederatedMemberDetails
+            {
+                MemberID = member.MemberID,
+                PolicyNumber = member.PolicyNumber,
+                FullName = member.FullName,
+                DateOfBirth = member.DateOfBirth,
+                PlanID = member.PlanID,
+                RemainingBalance = member.RemainingBalance,
+                Status = member.Status, 
+                ProviderName = providerName // Passed in from context or inferred
+            };
         }
 
         private FederatedMemberDetails MapToFederated(BaseInsuranceRegistry m, string provider)

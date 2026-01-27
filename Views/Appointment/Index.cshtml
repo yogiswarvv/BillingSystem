@@ -27,100 +27,180 @@
         </div>
     </div>
 
-    <!-- Active Appointments -->
-    <div class="card shadow border-0 mb-5" style="border-radius: 20px;">
-        <div class="card-header bg-primary text-white py-3 border-0 d-flex justify-content-between align-items-center" style="border-radius: 20px 20px 0 0;">
-            <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2"></i> Scheduled Appointments</h5>
-            <span class="badge bg-white text-primary rounded-pill">@Model.ScheduledAppointments.Count Active</span>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-4">Patient</th>
-                            <th>Doctor</th>
-                            <th>Date & Time</th>
-                            <th>Reason</th>
-                            <th class="text-end pe-4">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.ScheduledAppointments.Any())
-                        {
-                            <tr><td colspan="5" class="text-center py-5 text-muted">No scheduled appointments found for this selection.</td></tr>
-                        }
-                        @foreach (var appt in Model.ScheduledAppointments)
-                        {
-                            <tr>
-                                <td class="ps-4">
-                                    <div class="fw-bold">@appt.PatientName</div>
-                                    <small class="text-muted">ID: #@appt.AppointmentId</small>
-                                </td>
-                                <td>
-                                    <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-3">@appt.DoctorName</span>
-                                </td>
-                                <td>
-                                    <div class="fw-bold">@appt.AppointmentDate.ToString("dd MMM yyyy")</div>
-                                    <small class="text-muted">@appt.AppointmentTime.ToString(@"hh\:mm") @(DateTime.Today.Add(appt.AppointmentTime).ToString("tt"))</small>
-                                </td>
-                                <td class="small text-truncate" style="max-width: 200px;">@appt.Reason</td>
-                                <td class="text-end pe-4">
-                                    <a asp-action="Details" asp-route-id="@appt.AppointmentId" class="btn btn-sm btn-outline-primary border-0 rounded-circle"><i class="bi bi-eye"></i></a>
-                                    <form asp-action="Cancel" asp-route-id="@appt.AppointmentId" method="post" class="d-inline" onsubmit="return confirm('Cancel this appointment?');">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 rounded-circle"><i class="bi bi-x-circle"></i></button>
-                                    </form>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-pills mb-4 gap-2" id="pills-tab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active rounded-pill fw-bold" id="pills-scheduled-tab" data-bs-toggle="pill" data-bs-target="#pills-scheduled" type="button" role="tab">
+                Scheduled <span class="badge bg-white text-primary ms-2 rounded-pill">@Model.ScheduledAppointments.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill fw-bold" id="pills-completed-tab" data-bs-toggle="pill" data-bs-target="#pills-completed" type="button" role="tab">
+                Completed <span class="badge bg-secondary ms-2 rounded-pill text-white">@Model.CompletedAppointments.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill fw-bold" id="pills-cancelled-tab" data-bs-toggle="pill" data-bs-target="#pills-cancelled" type="button" role="tab">
+                Cancelled <span class="badge bg-danger bg-opacity-75 ms-2 rounded-pill text-white">@Model.CancelledAppointments.Count</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tabs Content -->
+    <div class="tab-content" id="pills-tabContent">
+        
+        <!-- Tab 1: Scheduled Appointments -->
+        <div class="tab-pane fade show active" id="pills-scheduled" role="tabpanel">
+            <div class="card shadow border-0" style="border-radius: 20px;">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-primary text-white">
+                                <tr>
+                                    <th class="ps-4 py-3">Patient</th>
+                                    <th class="py-3">Doctor</th>
+                                    <th class="py-3">Date & Time</th>
+                                    <th class="py-3">Reason</th>
+                                    <th class="text-end pe-4 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.ScheduledAppointments.Any())
+                                {
+                                    <tr><td colspan="5" class="text-center py-5 text-muted">No scheduled appointments found.</td></tr>
+                                }
+                                @foreach (var appt in Model.ScheduledAppointments)
+                                {
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="fw-bold">@appt.PatientName</div>
+                                            <small class="text-muted">ID: #@appt.AppointmentId</small>
+                                        </td>
+                                        <td><span class="badge bg-info bg-opacity-10 text-info rounded-pill px-3">@appt.DoctorName</span></td>
+                                        <td>
+                                            <div class="fw-bold">@appt.AppointmentDate.ToString("dd MMM yyyy")</div>
+                                            <small class="text-muted">@appt.AppointmentTime.ToString(@"hh\:mm") @(DateTime.Today.Add(appt.AppointmentTime).ToString("tt"))</small>
+                                        </td>
+                                        <td class="small text-truncate" style="max-width: 200px;">@appt.Reason</td>
+                                        <td class="text-end pe-4">
+                                            <a asp-action="Details" asp-route-id="@appt.AppointmentId" class="btn btn-sm btn-outline-primary border-0 rounded-circle" title="View"><i class="bi bi-eye"></i></a>
+                                            <form asp-action="Cancel" asp-route-id="@appt.AppointmentId" method="post" class="d-inline" onsubmit="return confirm('Cancel this appointment?');">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger border-0 rounded-circle" title="Cancel"><i class="bi bi-x-circle"></i></button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Cancelled/History Section -->
-    <div class="card shadow border-0 bg-light bg-opacity-50" style="border-radius: 20px; border: 1px dashed #dee2e6 !important;">
-        <div class="card-header bg-secondary text-white py-3 border-0 d-flex justify-content-between align-items-center" style="border-radius: 20px 20px 0 0;">
-            <h6 class="mb-0 fw-bold text-uppercase small tracking-wider"><i class="bi bi-archive me-2"></i> Cancelled & Past Appointments</h6>
-            <button class="btn btn-sm btn-outline-light border-0" type="button" data-bs-toggle="collapse" data-bs-target="#cancelledTable">
-                <i class="bi bi-chevron-down"></i>
-            </button>
-        </div>
-        <div id="cancelledTable" class="collapse">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0 opacity-75">
-                        <thead class="table-dark table-active">
-                            <tr>
-                                <th class="ps-4">Patient</th>
-                                <th>Doctor</th>
-                                <th>Date</th>
-                                <th>Status</th>
-                                <th class="text-end pe-4">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (!Model.CancelledAppointments.Any())
-                            {
-                                <tr><td colspan="5" class="text-center py-4 text-muted small italic">No records in history.</td></tr>
-                            }
-                            @foreach (var appt in Model.CancelledAppointments)
-                            {
+        <!-- Tab 2: Completed Appointments -->
+        <div class="tab-pane fade" id="pills-completed" role="tabpanel">
+            <div class="card shadow border-0" style="border-radius: 20px;">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-secondary text-white">
                                 <tr>
-                                    <td class="ps-4">@appt.PatientName</td>
-                                    <td>@appt.DoctorName</td>
-                                    <td>@appt.AppointmentDate.ToShortDateString()</td>
-                                    <td><span class="badge bg-danger rounded-pill">Cancelled</span></td>
-                                    <td class="text-end pe-4">
-                                        <a asp-action="Details" asp-route-id="@appt.AppointmentId" class="btn btn-sm btn-link text-muted"><i class="bi bi-info-circle"></i></a>
-                                    </td>
+                                    <th class="ps-4 py-3">Patient</th>
+                                    <th class="py-3">Doctor</th>
+                                    <th class="py-3">Date & Time</th>
+                                    <th class="py-3">Reason</th>
+                                    <th class="text-end pe-4 py-3">Status</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @if (!Model.CompletedAppointments.Any())
+                                {
+                                    <tr><td colspan="5" class="text-center py-5 text-muted">No past appointments found.</td></tr>
+                                }
+                                @foreach (var appt in Model.CompletedAppointments)
+                                {
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="fw-bold">@appt.PatientName</div>
+                                            <small class="text-muted">ID: #@appt.AppointmentId</small>
+                                        </td>
+                                        <td><span class="badge bg-secondary bg-opacity-10 text-dark rounded-pill px-3">@appt.DoctorName</span></td>
+                                        <td>
+                                            <div class="fw-bold text-muted">@appt.AppointmentDate.ToString("dd MMM yyyy")</div>
+                                            <small class="text-muted">@appt.AppointmentTime.ToString(@"hh\:mm") @(DateTime.Today.Add(appt.AppointmentTime).ToString("tt"))</small>
+                                        </td>
+                                        <td class="text-muted small">@appt.Reason</td>
+                                        <td class="text-end pe-4">
+                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">Completed</span>
+                                            <a asp-action="Details" asp-route-id="@appt.AppointmentId" class="btn btn-sm btn-link text-muted ms-2"><i class="bi bi-info-circle"></i></a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Cancelled Appointments -->
+        <div class="tab-pane fade" id="pills-cancelled" role="tabpanel">
+            <div class="card shadow border-0" style="border-radius: 20px;">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-danger text-white">
+                                <tr>
+                                    <th class="ps-4 py-3">Patient</th>
+                                    <th class="py-3">Doctor</th>
+                                    <th class="py-3">Original Date</th>
+                                    <th class="py-3">Status</th>
+                                    <th class="text-end pe-4 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.CancelledAppointments.Any())
+                                {
+                                    <tr><td colspan="5" class="text-center py-5 text-muted">No cancelled appointments.</td></tr>
+                                }
+                                @foreach (var appt in Model.CancelledAppointments)
+                                {
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="fw-bold text-muted text-decoration-line-through">@appt.PatientName</div>
+                                        </td>
+                                        <td><span class="text-muted">@appt.DoctorName</span></td>
+                                        <td class="text-muted">@appt.AppointmentDate.ToString("dd MMM yyyy")</td>
+                                        <td><span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3">Cancelled</span></td>
+                                        <td class="text-end pe-4">
+                                            <a asp-action="Details" asp-route-id="@appt.AppointmentId" class="btn btn-sm btn-outline-secondary border-0 rounded-circle"><i class="bi bi-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .nav-pills .nav-link {
+        color: #6c757d;
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        padding: 10px 20px;
+        transition: all 0.2s ease;
+    }
+    .nav-pills .nav-link:hover {
+        background-color: #e2e6ea;
+        transform: translateY(-2px);
+    }
+    .nav-pills .nav-link.active {
+        background-color: #0d6efd;
+        color: white;
+        box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);
+    }
+</style>

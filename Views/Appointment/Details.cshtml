@@ -65,7 +65,7 @@
                                     <th class="ps-4">Test Name</th>
                                     <th>Status</th>
                                     <th>Results</th>
-                                    <th class="text-center pe-4">Actions</th>
+
                                 </tr>
                             </thead>
                             <tbody>
@@ -86,17 +86,7 @@
                                                 @if(lab.IsPaid) { <span class="badge bg-success ms-1">Paid</span> } else { <span class="badge bg-danger ms-1">Unpaid</span> }
                                             </td>
                                             <td>@(lab.Results ?? "Awaiting Results")</td>
-                                            <td class="text-center pe-4">
-                                                <div class="btn-group">
-                                                    <a asp-controller="LabOrder" asp-action="UpdateStatus" asp-route-id="@lab.LabOrderId" asp-route-returnUrl="@(Context.Request.Path + Context.Request.QueryString)" class="btn btn-sm btn-outline-primary">Update</a>
-                                                    @if (lab.Status != "Completed" && !lab.IsPaid)
-                                                    {
-                                                        <form asp-controller="LabOrder" asp-action="Delete" asp-route-id="@lab.LabOrderId" asp-route-returnUrl="@(Context.Request.Path + Context.Request.QueryString)" method="post" onsubmit="return confirm('Are you sure you want to remove this lab order?');" class="d-inline">
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger ms-1">Delete</button>
-                                                        </form>
-                                                    }
-                                                </div>
-                                            </td>
+
                                         </tr>
                                     }
                                 }
@@ -123,7 +113,7 @@
                                     <th>Suggested</th>
                                     <th>Patient Choice</th>
                                     <th>Status</th>
-                                    <th class="text-center pe-4">Actions</th>
+
                                 </tr>
                             </thead>
                             <tbody>
@@ -148,14 +138,7 @@
                                                 <span class="badge @(pre.Status == "Suggested" ? "bg-warning text-dark" : "bg-success")">@pre.Status</span>
                                                 @if(pre.IsPaid) { <span class="badge bg-success ms-1">Paid</span> } else { <span class="badge bg-danger ms-1">Unpaid</span> }
                                             </td>
-                                            <td class="text-center pe-4">
-                                                @if(!pre.IsPaid)
-                                                {
-                                                    <a asp-controller="Prescription" asp-action="Dispense" asp-route-id="@pre.PrescriptionId" class="btn btn-sm btn-outline-success">
-                                                        <i class="bi bi-cart"></i> Dispense / Pick Units
-                                                    </a>
-                                                }
-                                            </td>
+
                                         </tr>
                                     }
                                 }

@@ -7,6 +7,7 @@ namespace BillingSystem.ViewModels
     public class AppointmentDashboardVM
     {
         public List<AppointmentListDto> ScheduledAppointments { get; set; } = new List<AppointmentListDto>();
+        public List<AppointmentListDto> CompletedAppointments { get; set; } = new List<AppointmentListDto>();
         public List<AppointmentListDto> CancelledAppointments { get; set; } = new List<AppointmentListDto>();
         
         public int? SelectedDoctorId { get; set; }
