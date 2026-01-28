@@ -29,6 +29,7 @@ namespace BillingSystem.Repositories
         {
              return await _context.Bills
                 .Include(b => b.BillItems)
+                .Include(b => b.Payments)
                 .Where(b => b.PatientId == patientId)
                 .OrderByDescending(b => b.BillDate)
                 .ToListAsync();

@@ -15,6 +15,7 @@ namespace BillingSystem.ViewModels
         
         // Stats
         public decimal TotalUnpaidAmount { get; set; }
+        public decimal TotalPaidAmount { get; set; }
         public decimal PendingCharges { get; set; }
         public decimal TotalOutstanding => TotalUnpaidAmount + PendingCharges;
         public int TotalVisits { get; set; }

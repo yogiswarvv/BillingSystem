@@ -30,14 +30,24 @@ namespace BillingSystem.Services
             var member = await GetMemberFromCorrectRegistryAsync(providerName, policyNumber);
             if (member == null) return null;
 
-            // Super Relaxed Validation: Only Policy Number matches (Implicit by lookup) 
-            // AND Status is Active. Name and DOB checks removed as per user request.
-            if (member.Status == "Active")
+            // 1. Check Status
+            if (member.Status != "Active") return null;
+
+            // 2. Validate Name (Case Insensitive)
+            if (!string.Equals(member.FullName.Trim(), fullName.Trim(), StringComparison.OrdinalIgnoreCase))
             {
-                return member;
+                // Name mismatch - policy does not belong to this patient
+                return null;
             }
 
-            return null;
+            // 3. Validate Date of Birth
+            if (member.DateOfBirth.Date != dob.Date)
+            {
+                // DOB mismatch
+                return null;
+            }
+
+            return member;
         }
 
         public async Task<decimal> CalculateCoverageAsync(string providerName, string policyNumber, decimal billAmount)

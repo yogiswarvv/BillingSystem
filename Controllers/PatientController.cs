@@ -211,6 +211,7 @@ namespace BillingSystem.Controllers
                 BillHistory = bills.OrderByDescending(b => b.BillDate).ToList(),
                 TotalVisits = appointments.Count(),
                 TotalUnpaidAmount = bills.Where(b => b.Status == BillStatus.Unpaid).Sum(b => b.FinalAmount),
+                TotalPaidAmount = bills.SelectMany(b => b.Payments).Sum(p => p.PaidAmount),
                 PendingCharges = pendingBilling.FinalNetPayable
             };
 
