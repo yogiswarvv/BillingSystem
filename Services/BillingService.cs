@@ -12,6 +12,7 @@ namespace BillingSystem.Services
         Task<IEnumerable<Bill>> GetBillsByPatientIdAsync(int patientId);
         Task<IEnumerable<ServiceMaster>> GetAllServicesAsync();
         Task CompleteBillItemsAsync(int billId);
+        Task<Patient?> GetPatientForBillingAsync(string searchTerm);
     }
 
     public class BillingService : IBillingService
@@ -148,7 +149,7 @@ namespace BillingSystem.Services
                 string? policyNo = request.PolicyNumber;
                 string? providerName = request.ProviderName;
 
-                // Fallback to DB if not provided in request
+                // Fallback to DB check via SP if not provided in request or to verify
                 if (string.IsNullOrEmpty(policyNo) || string.IsNullOrEmpty(providerName))
                 {
                     var dbInsurance = patient.Insurances.FirstOrDefault(i => i.IsActive);
@@ -161,27 +162,87 @@ namespace BillingSystem.Services
 
                 if (!string.IsNullOrEmpty(policyNo) && !string.IsNullOrEmpty(providerName))
                 {
+                    // 1. Verify via Local SP (Primary)
+                    var validInsurance = await _unitOfWork.Bills.CheckPatientInsuranceSPAsync(patient.PatientId, providerName.Trim(), policyNo.Trim());
+                    
+                    // 2. Verify via External Registry (Secondary/Ad-hoc)
                     var member = await insuranceService.ValidateRegistryMemberAsync(providerName, policyNo, patient.FullName, patient.DateOfBirth);
-                    if (member != null)
-                    {
-                    result.InsuranceProvider = member.ProviderName; 
-                    result.CoveragePercent = 100; // Visual only
-                    
-                    result.InsuranceDeduction = await insuranceService.CalculateCoverageAsync(providerName, policyNo, currentTotal);
-                    
-                    if(result.InsuranceDeduction > currentTotal) result.InsuranceDeduction = currentTotal;
 
-                    currentTotal -= result.InsuranceDeduction;
-                    
-                    result.Items.Add(new BillItemDto 
-                    { 
-                        Description = $"Insurance Coverage (Policy: {policyNo} via {member.ProviderName} Registry)", 
-                        Amount = -result.InsuranceDeduction, 
-                        Type = BillItemType.Insurance 
-                    });
+                    // Proceed if EITHER is valid
+                    if (validInsurance != null || member != null)
+                    {
+                        // Determine Base Coverage Percentage Priority:
+                        // 1. Request Input (UI)
+                        // 2. Local DB (Verified SP)
+                        // 3. External Registry Plan
+                        decimal effectivePercent = 0;
+                        
+                        if (request.InsurancePercent.HasValue && request.InsurancePercent.Value > 0)
+                        {
+                            effectivePercent = (decimal)request.InsurancePercent.Value;
+                        }
+                        else if (validInsurance != null && validInsurance.CoveragePercent > 0)
+                        {
+                            effectivePercent = (decimal)validInsurance.CoveragePercent;
+                        }
+                        else if (member != null)
+                        {
+                            // If we only found it in registry, we might need to fetch plan % (simulated here as 80 default or implied from service? 
+                            // Service CalculateCoverageAsync does lookup. Let's rely on that first.)
+                        }
+
+                        // Calculate Deduction
+                        // Method A: External Service Calculation (if available)
+                        if (member != null)
+                        {
+                            result.InsuranceDeduction = await insuranceService.CalculateCoverageAsync(providerName, policyNo, currentTotal);
+                             result.InsuranceProvider = member.ProviderName; 
+                        }
+
+                        // Method B: Fallback / Override with Effective Percent
+                        // Apply if Method A returned 0 OR we prioritize UI/Local %
+                        bool useMethodB = result.InsuranceDeduction == 0;
+                        
+                        // If we have an explicit effective percent, we usually want to trust that (especially UI input)
+                        // But if CalculateCoverageAsync used a specific rule (co-pay etc), we should be careful.
+                        // User request: "it should cover upto 80 percent". 
+                        // If UI says 80%, we force 80%.
+                        if (request.InsurancePercent.HasValue && request.InsurancePercent.Value > 0)
+                        {
+                            useMethodB = true;
+                        }
+                        else if (result.InsuranceDeduction == 0 && effectivePercent > 0)
+                        {
+                            useMethodB = true;
+                        }
+
+                        if (useMethodB && effectivePercent > 0)
+                        {
+                             result.InsuranceDeduction = currentTotal * (effectivePercent / 100m);
+                             result.CoveragePercent = (double)effectivePercent; 
+                        }
+
+                        // Cap
+                        if(result.InsuranceDeduction > currentTotal) result.InsuranceDeduction = currentTotal;
+
+                        currentTotal -= result.InsuranceDeduction;
+                        
+                        // Visual Props
+                        var displayProvider = member?.ProviderName ?? validInsurance?.ProviderName ?? providerName;
+                        result.InsuranceProvider = displayProvider;
+                        
+                        result.Items.Add(new BillItemDto 
+                        { 
+                            Description = $"Insurance Coverage (Policy: {policyNo} via {displayProvider})", 
+                            Amount = -result.InsuranceDeduction, 
+                            Type = BillItemType.Insurance 
+                        });
+                        
+                        // Final consistency check for return DTO
+                        if (result.CoveragePercent == 0 && effectivePercent > 0) result.CoveragePercent = (double)effectivePercent;
+                    }
                 }
             }
-        }
             
             if (currentTotal < 0) currentTotal = 0;
 
@@ -321,6 +382,12 @@ namespace BillingSystem.Services
             }
 
             await _unitOfWork.CompleteAsync();
+        }
+
+
+        public async Task<Patient?> GetPatientForBillingAsync(string searchTerm)
+        {
+            return await _unitOfWork.Bills.GetPatientForBillingSPAsync(searchTerm);
         }
     }
 }

@@ -90,7 +90,7 @@ namespace BillingSystem.Controllers
                 PatientName = patient.FullName,
                 Age = patient.Age,
                 IsSenior = patient.IsSenior,
-                HasInsurance = activeInsurance != null,
+                HasInsurance = false, // Always OFF by default as requested
                 ProviderName = activeInsurance?.ProviderName,
                 PolicyNumber = activeInsurance?.PolicyNumber,
                 CoverageType = activeInsurance?.CoverageType ?? InsuranceCoverageType.FullBill,
@@ -108,6 +108,12 @@ namespace BillingSystem.Controllers
                 ProviderName = model.ProviderName
             };
             var result = await _billingService.CalculateBillAsync(request);
+
+            if (result.FinalNetPayable <= 0 && !result.Items.Any())
+            {
+                TempData["InfoMessage"] = $"Patient {patient.FullName} has no pending charges or admissions to bill.";
+                return RedirectToAction(nameof(Index));
+            }
             
             model.BillPreview = new BillGenerationPreviewViewModel
             {
@@ -256,6 +262,7 @@ namespace BillingSystem.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Payment(PaymentViewModel model, [FromServices] IPaymentService paymentService)
         {
             if (ModelState.IsValid)
@@ -272,8 +279,8 @@ namespace BillingSystem.Controllers
 
                     await paymentService.ProcessPaymentAsync(payment);
 
-                    // Redirect to Home
-                    return RedirectToAction("Index", "Home"); 
+                    TempData["SuccessMessage"] = "Payment processed successfully. Bill settled.";
+                    return RedirectToAction(nameof(Invoice), new { billId = model.BillId }); 
                 }
                 catch(Exception ex)
                 {
@@ -295,6 +302,19 @@ namespace BillingSystem.Controllers
             ViewBag.PatientId = patientId;
 
             return View(bills.OrderByDescending(b => b.BillDate));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Invoice(int billId)
+        {
+            var bill = await _unitOfWork.Bills.GetByIdAsync(billId);
+            if (bill == null) return NotFound();
+
+            // Ensure details are loaded (Items, Patient, Payments)
+            var detailedBill = await _billingService.GetBillByIdAsync(billId);
+            if (detailedBill == null) return NotFound();
+
+            return View(detailedBill);
         }
     }
 }

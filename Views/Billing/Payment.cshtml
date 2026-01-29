@@ -21,6 +21,7 @@
                     </div>
 
                     <form asp-action="Payment" method="post">
+                        @Html.AntiForgeryToken()
                         <input type="hidden" asp-for="BillId" />
                         
                         <div class="mb-4">

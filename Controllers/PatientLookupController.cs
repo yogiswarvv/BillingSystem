@@ -12,14 +12,16 @@ namespace BillingSystem.Controllers
         private readonly LabOrderService _labOrderService;
         private readonly IInsuranceService _insuranceService;
         private readonly BillingSystem.Data.HospitalDbContext _context;
-
-        public PatientLookupController(IPatientService patientService, AppointmentService appointmentService, LabOrderService labOrderService, IInsuranceService insuranceService, BillingSystem.Data.HospitalDbContext context)
+        private readonly BillingSystem.Repositories.IUnitOfWork _unitOfWork;
+ 
+        public PatientLookupController(IPatientService patientService, AppointmentService appointmentService, LabOrderService labOrderService, IInsuranceService insuranceService, BillingSystem.Data.HospitalDbContext context, BillingSystem.Repositories.IUnitOfWork unitOfWork)
         {
             _patientService = patientService;
             _appointmentService = appointmentService;
             _labOrderService = labOrderService;
             _insuranceService = insuranceService;
             _context = context;
+            _unitOfWork = unitOfWork;
         }
 
         [HttpGet]
@@ -66,17 +68,31 @@ namespace BillingSystem.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetInsuranceDetails(string provider, string policyNumber)
+        public async Task<IActionResult> GetInsuranceDetails(int patientId, string provider, string policyNumber)
         {
             if (string.IsNullOrEmpty(policyNumber))
                 return BadRequest("Policy Number is required");
 
+            // 1. Try Global SP Check (Local Database)
+            var localPolicy = await _unitOfWork.Bills.CheckPatientInsuranceSPAsync(patientId, provider?.Trim() ?? "", policyNumber.Trim());
+            
+            if (localPolicy != null)
+            {
+                return Json(new
+                {
+                    coveragePercent = localPolicy.CoveragePercent,
+                    planName = "Direct Coverage", // Or fetch plan if available
+                    remainingBalance = 1000000 // Infinite for direct lookup unless we have specific ledger
+                });
+            }
+
+            // 2. Fallback to External Registry Simulation
             var member = await _insuranceService.GetMemberDetailsAsync(policyNumber);
             if (member == null)
                 return NotFound("please enter correct details or please contact the admin");
 
             // Fetch Plan to get details
-            var plan = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(_context.InsurancePlans.Where(p => p.PlanID == member.PlanID));
+            var plan = await _context.InsurancePlans.FirstOrDefaultAsync(p => p.PlanID == member.PlanID);
 
             return Json(new
             {

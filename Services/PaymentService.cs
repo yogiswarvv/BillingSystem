@@ -43,7 +43,6 @@ namespace BillingSystem.Services
 
             payment.PaidDate = DateTime.Now;
             await _unitOfWork.Payments.AddAsync(payment);
-            await _unitOfWork.CompleteAsync();
 
             // 4. Update Bill Status if fully paid
             var newTotalPaid = totalPaid + payment.PaidAmount;
@@ -51,11 +50,13 @@ namespace BillingSystem.Services
             {
                 bill.Status = BillStatus.Paid;
                 _unitOfWork.Bills.Update(bill);
-                await _unitOfWork.CompleteAsync();
 
                 // 5. Finalize Clinical Records
                 await _billingService.CompleteBillItemsAsync(bill.BillId);
             }
+
+            // Single commit for both Payment and Status change
+            await _unitOfWork.CompleteAsync();
 
             return payment.PaymentId;
         }

@@ -46,8 +46,7 @@ namespace BillingSystem.Controllers
                     var apptEntity = await _appointmentService.GetAppointmentByIdAsync(apptDto.AppointmentId);
                     if (apptEntity != null)
                     {
-                        apptEntity.Status = "Completed";
-                        await _appointmentService.UpdateAppointmentAsync(apptEntity);
+                        await _appointmentService.UpdateAppointmentStatusAsync(apptEntity.AppointmentId, "Completed");
                     }
                 }
             }
@@ -172,8 +171,7 @@ namespace BillingSystem.Controllers
             var appointment = await _appointmentService.GetAppointmentByIdAsync(id);
             if (appointment != null)
             {
-                appointment.Status = "Cancelled";
-                await _appointmentService.UpdateAppointmentAsync(appointment);
+                await _appointmentService.UpdateAppointmentStatusAsync(id, "Cancelled");
             }
 
             if (!string.IsNullOrEmpty(returnUrl))

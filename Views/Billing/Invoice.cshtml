@@ -1,0 +1,196 @@
+@model BillingSystem.Models.Bill
+@{
+    ViewData["Title"] = "Invoice #" + Model.BillId;
+}
+
+<div class="container py-5">
+    <div id="invoice-card" class="card shadow-lg border-0 overflow-hidden mx-auto" style="max-width: 900px; border-radius: 15px;">
+        <!-- Header / Branding -->
+        <div class="card-header bg-dark text-white p-4">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h2 class="mb-0 fw-bold"><i class="bi bi-hospital me-2"></i> CITY HOSPITAL</h2>
+                    <p class="mb-0 opacity-75">123 Health Ave, Medical District, NY 10001</p>
+                    <p class="mb-0 opacity-75">Tel: +1 (555) 000-9999 | care@cityhospital.com</p>
+                </div>
+                <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                    <h1 class="display-5 fw-bold mb-0">INVOICE</h1>
+                    <p class="fs-5 mb-0 opacity-75">No: #@Model.BillId</p>
+                    <p class="mb-0 opacity-75">Date: @Model.BillDate.ToString("dd MMM yyyy, hh:mm tt")</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-5">
+            <!-- Patient & Bill Status -->
+            <div class="row mb-5">
+                <div class="col-md-6">
+                    <h6 class="text-uppercase text-muted fw-bold small mb-3">Patient Information</h6>
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary-subtle text-primary rounded-circle p-3 me-3">
+                            <i class="bi bi-person-fill fs-3"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0 fw-bold">@Model.Patient?.FullName</h4>
+                            <p class="mb-0 text-muted">Patient ID: #@Model.PatientId</p>
+                            <p class="mb-0 text-muted">Contact: @Model.Patient?.MobileNumber</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end mt-4 mt-md-0 border-start-md">
+                    <h6 class="text-uppercase text-muted fw-bold small mb-3">Bill Summary</h6>
+                    <div class="mb-2">
+                        @if (Model.Status == BillingSystem.Models.BillStatus.Paid)
+                        {
+                            <span class="badge bg-success-subtle text-success border border-success px-4 py-2 fs-6 rounded-pill">
+                                <i class="bi bi-check-circle-fill me-1"></i> SETTLED / PAID
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger-subtle text-danger border border-danger px-4 py-2 fs-6 rounded-pill">
+                                <i class="bi bi-clock-history me-1"></i> UNPAID / PENDING
+                            </span>
+                        }
+                    </div>
+                    <p class="mb-0 fs-5 fw-bold text-dark">Total Amount: ₹@Model.FinalAmount.ToString("N2")</p>
+                </div>
+            </div>
+
+            <!-- Itemized Table -->
+            <div class="table-responsive mb-5">
+                <table class="table table-hover align-middle border-top">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="py-3 ps-3">Description</th>
+                            <th class="py-3">Type</th>
+                            <th class="py-3 text-end pe-3">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Consultation -->
+                        <tr>
+                            <td class="ps-3 py-3">
+                                <div class="fw-bold">General Consultation</div>
+                                <small class="text-muted">Standard OPD Visit Charge</small>
+                            </td>
+                            <td><span class="badge bg-secondary-subtle text-secondary small">Consultation</span></td>
+                            <td class="text-end pe-3 fw-bold">₹@Model.ConsultationFee.ToString("N2")</td>
+                        </tr>
+
+                        @foreach (var item in Model.BillItems)
+                        {
+                            <tr>
+                                <td class="ps-3 py-3">
+                                    <div class="fw-bold">@item.Description</div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info-subtle text-info small">@item.ItemType</span>
+                                </td>
+                                <td class="text-end pe-3 fw-bold">₹@item.Amount.ToString("N2")</td>
+                            </tr>
+                        }
+
+                        @if (Model.AdmitAmount > 0)
+                        {
+                            <tr>
+                                <td class="ps-3 py-3">
+                                    <div class="fw-bold">Room & Nursing Charges</div>
+                                </td>
+                                <td><span class="badge bg-warning-subtle text-warning small">Admission</span></td>
+                                <td class="text-end pe-3 fw-bold">₹@Model.AdmitAmount.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Totals Logic -->
+            <div class="row justify-content-end">
+                <div class="col-md-5">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Subtotal (Gross)</span>
+                        <span class="fw-bold">₹@Model.TotalAmount.ToString("N2")</span>
+                    </div>
+                    
+                    @if (Model.DiscountAmount > 0 || Model.SeniorDiscount > 0)
+                    {
+                        <div class="d-flex justify-content-between mb-2 text-danger">
+                            <span>Total Discounts</span>
+                            <span>-₹@((Model.DiscountAmount + Model.SeniorDiscount).ToString("N2"))</span>
+                        </div>
+                    }
+
+                    @if (Model.InsuranceDeduction > 0)
+                    {
+                        <div class="d-flex justify-content-between mb-2 text-success">
+                            <span>Insurance Coverage</span>
+                            <span>-₹@Model.InsuranceDeduction.ToString("N2")</span>
+                        </div>
+                    }
+
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Tax (GST)</span>
+                        <span class="fw-bold">₹@Model.TaxAmount.ToString("N2")</span>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="h5 mb-0 fw-bold">Final Net Payable</span>
+                        <span class="h4 mb-0 fw-bold text-success">₹@Model.FinalAmount.ToString("N2")</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Details -->
+            @if (Model.Payments.Any())
+            {
+                <div class="bg-light p-4 rounded-4 mt-4 no-print">
+                    <h6 class="text-uppercase fw-bold small mb-3 text-muted"><i class="bi bi-wallet2 me-2"></i> Payment History</h6>
+                    @foreach (var payment in Model.Payments)
+                    {
+                        <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2 last-no-border">
+                            <div>
+                                <span class="fw-bold">@payment.PaymentMode</span>
+                                <small class="text-muted d-block">Ref: @(payment.TransactionRef ?? "CASH") | @payment.PaidDate.ToString("dd MMM yyyy")</small>
+                            </div>
+                            <span class="badge bg-white text-success border border-success px-3">Received ₹@payment.PaidAmount.ToString("N2")</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="card-footer bg-white p-4 text-center border-top-0 no-print">
+            <button onclick="window.print()" class="btn btn-primary btn-lg rounded-pill px-5 shadow-sm me-2">
+                <i class="bi bi-printer me-2"></i> Print Invoice
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-lg rounded-pill px-5">
+                <i class="bi bi-arrow-left me-2"></i> Billing Desk
+            </a>
+            <p class="text-muted small mt-4 mb-0">This is a computer-generated invoice and doesn't require a physical signature.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    @@media print {
+        .no-print, .navbar, footer, .btn-primary, .btn-outline-secondary {
+            display: none !important;
+        }
+        body { padding: 0 !important; margin: 0 !important; background: white !important; }
+        .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+        .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        .card-header { -webkit-print-color-adjust: exact; background-color: #212529 !important; color: white !important; }
+        #invoice-card { margin-top: 0 !important; border-radius: 0 !important; }
+    }
+    
+    .last-no-border:last-child {
+        border-bottom: 0 !important;
+    }
+
+    @@media (min-width: 768px) {
+        .border-start-md { border-left: 1px solid #dee2e6 !important; padding-left: 2rem !important; }
+    }
+</style>

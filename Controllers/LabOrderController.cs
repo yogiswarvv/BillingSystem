@@ -32,15 +32,7 @@ namespace BillingSystem.Controllers
         [Authorize(Roles = "Lab")]
         public async Task<IActionResult> Index(string searchString)
         {
-            var labOrders = await _labOrderService.GetAllLabOrdersAsync();
-            
-            if (!string.IsNullOrEmpty(searchString))
-            {
-                labOrders = labOrders.Where(l => 
-                    l.Appointment.Patient.FullName.Contains(searchString, StringComparison.OrdinalIgnoreCase) || 
-                    l.Appointment.PatientId.ToString() == searchString
-                );
-            }
+            var labOrders = await _labOrderService.SearchLabOrdersAsync(searchString);
 
             ViewBag.CurrentFilter = searchString;
             return View(labOrders);
@@ -96,17 +88,7 @@ namespace BillingSystem.Controllers
             {
                 try
                 {
-                    foreach (var testName in model.SelectedTestNames)
-                    {
-                        var labOrder = new LabOrder
-                        {
-                            AppointmentId = model.AppointmentId,
-                            TestName = testName,
-                            Status = "Pending",
-                            IsPaid = false
-                        };
-                        await _labOrderService.CreateLabOrderAsync(labOrder);
-                    }
+                    await _labOrderService.CreateLabOrdersAsync(model.AppointmentId, model.SelectedTestNames);
 
                     if (!string.IsNullOrEmpty(model.ReturnUrl))
                     {

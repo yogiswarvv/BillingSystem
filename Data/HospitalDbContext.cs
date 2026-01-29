@@ -71,7 +71,7 @@ namespace BillingSystem.Data
             // 1. Patient
             modelBuilder.Entity<Patient>(entity =>
             {
-                entity.ToTable("Patients", "Healthcare");
+                entity.ToTable("Patients", "Healthcare", tb => tb.HasTrigger("trg_AuditPatients"));
                 entity.HasIndex(p => p.MobileNumber).HasDatabaseName("IX_Patient_MobileNumber");
                 entity.Property(p => p.FirstName).IsRequired().HasMaxLength(100);
                 entity.Property(p => p.LastName).IsRequired().HasMaxLength(100);
@@ -88,7 +88,7 @@ namespace BillingSystem.Data
             // 2. Appointment
             modelBuilder.Entity<Appointment>(entity =>
             {
-                entity.ToTable("Appointment", "Healthcare");
+                entity.ToTable("Appointment", "Healthcare", tb => tb.HasTrigger("trg_AuditAppointment"));
                 entity.HasKey(a => a.AppointmentId);
                 entity.Property(a => a.Status).HasDefaultValue("Scheduled");
                 entity.Property(a => a.CreatedDate).HasDefaultValueSql("GETDATE()");
@@ -103,7 +103,7 @@ namespace BillingSystem.Data
             // 3. Doctor
             modelBuilder.Entity<Doctor>(entity =>
             {
-                entity.ToTable("Doctor", "Healthcare");
+                entity.ToTable("Doctor", "Healthcare", tb => tb.HasTrigger("trg_AuditDoctor"));
                 entity.HasKey(d => d.DoctorId);
                 entity.Property(d => d.CreatedDate).HasDefaultValueSql("GETDATE()");
             });
@@ -118,7 +118,7 @@ namespace BillingSystem.Data
             // 4. LabOrder
             modelBuilder.Entity<LabOrder>(entity =>
             {
-                entity.ToTable("LabOrder", "Healthcare");
+                entity.ToTable("LabOrder", "Healthcare", tb => tb.HasTrigger("trg_AuditLabOrder"));
                 entity.HasKey(l => l.LabOrderId);
                 entity.Property(l => l.Status).HasDefaultValue("Pending");
                 entity.Property(l => l.OrderDate).HasDefaultValueSql("GETDATE()");
@@ -127,7 +127,7 @@ namespace BillingSystem.Data
             // 5. AuditLog
             modelBuilder.Entity<AuditLog>(entity =>
             {
-                entity.ToTable("AuditLog", "Healthcare");
+                entity.ToTable("AuditLog", "Healthcare", tb => tb.HasTrigger("trg_ProtectAuditLog"));
                 entity.Property(a => a.ChangedDate).HasDefaultValueSql("GETDATE()");
                 entity.Property(a => a.ChangedBy).HasDefaultValue("SYSTEM");
             });
@@ -135,6 +135,7 @@ namespace BillingSystem.Data
             // 6. ServiceMaster
             modelBuilder.Entity<ServiceMaster>(entity =>
             {
+                entity.ToTable("ServicesMaster", "Healthcare", tb => tb.HasTrigger("trg_AuditServicesMaster"));
                 entity.HasIndex(s => s.ServiceName).IsUnique().HasDatabaseName("IX_Service_Name");
                 entity.Property(s => s.Cost).HasColumnType("decimal(18,2)");
                 entity.Property(s => s.CreatedDate).HasDefaultValueSql("GETDATE()");
@@ -143,6 +144,7 @@ namespace BillingSystem.Data
             // 3. Bill & BillItem & Payment (Money Precision)
             modelBuilder.Entity<Bill>(entity => 
             {
+                entity.ToTable("Bills", "Healthcare", tb => tb.HasTrigger("trg_AuditBills"));
                 entity.HasIndex(b => b.BillDate).HasDatabaseName("IX_Bill_BillDate");
                 entity.Property(b => b.ConsultationFee).HasColumnType("decimal(18,2)").HasDefaultValue(500m);
                 entity.Property(b => b.OptionalServicesAmount).HasColumnType("decimal(18,2)");
@@ -159,12 +161,14 @@ namespace BillingSystem.Data
             
             modelBuilder.Entity<Payment>(entity =>
             {
+                entity.ToTable("Payments", "Healthcare", tb => tb.HasTrigger("trg_AuditPayments"));
                 entity.HasIndex(p => p.TransactionRef).HasDatabaseName("IX_Payment_TransactionRef");
                 entity.Property(p => p.PaidAmount).HasColumnType("decimal(18,2)");
             });
 
             modelBuilder.Entity<Admission>(entity =>
             {
+                entity.ToTable("Admissions", "Healthcare", tb => tb.HasTrigger("trg_AuditAdmissions"));
                 entity.Property(a => a.FeePerDay).HasColumnType("decimal(18,2)").HasDefaultValue(2000m);
             });
 
@@ -234,6 +238,10 @@ namespace BillingSystem.Data
             );
 
             // 7. Pharmacy Seeding
+            modelBuilder.Entity<Medicine>(entity => entity.ToTable("Medicines", "Healthcare", tb => tb.HasTrigger("trg_AuditMedicines")));
+            modelBuilder.Entity<Prescription>(entity => entity.ToTable("Prescriptions", "Healthcare", tb => tb.HasTrigger("trg_AuditPrescriptions")));
+            modelBuilder.Entity<InsuranceProvider>(entity => entity.ToTable("InsuranceProviders", "Healthcare", tb => tb.HasTrigger("trg_AuditInsuranceProviders")));
+
             modelBuilder.Entity<Medicine>().HasData(
                 new Medicine { MedicineId = 1, Name = "Paracetamol", DosageStrength = "500mg", Category = "Analgesic", PricePerUnit = 2, Stock = 1000, ExpiryDate = new DateTime(2026, 12, 31) },
                 new Medicine { MedicineId = 2, Name = "Amoxicillin", DosageStrength = "250mg", Category = "Antibiotic", PricePerUnit = 15, Stock = 500, ExpiryDate = new DateTime(2025, 6, 30) },

@@ -142,7 +142,7 @@
                 if (policy.length > 3) {
                     $('#verificationBadge').removeClass('bg-success bg-danger bg-secondary').addClass('bg-warning text-dark').text('Verifying...');
                     
-                    $.get('/PatientLookup/GetInsuranceDetails?provider=' + encodeURIComponent(provider) + '&policyNumber=' + encodeURIComponent(policy))
+                    $.get('/PatientLookup/GetInsuranceDetails?patientId=@Model.PatientId&provider=' + encodeURIComponent(provider) + '&policyNumber=' + encodeURIComponent(policy))
                     .done(function(data) {
                         $('#txtPercent').val(data.coveragePercent);
                         $('#verificationBadge').removeClass('bg-warning text-dark').addClass('bg-success').html('<i class="bi bi-check-circle"></i> Verified');

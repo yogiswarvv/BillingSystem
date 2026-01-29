@@ -3,6 +3,7 @@ using BillingSystem.Models;
 using BillingSystem.Repositories;
 using BillingSystem.DTOs;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace BillingSystem.Services
 {
@@ -17,13 +18,14 @@ namespace BillingSystem.Services
             _context = context;
         }
 
+        public async Task<IEnumerable<LabOrder>> SearchLabOrdersAsync(string? searchTerm)
+        {
+            return await _unitOfWork.Patients.SearchLabOrdersSPAsync(searchTerm);
+        }
+
         public async Task<IEnumerable<LabOrder>> GetAllLabOrdersAsync()
         {
-            return await _context.LabOrders
-                .Include(l => l.Appointment)
-                    .ThenInclude(a => a.Patient)
-                .OrderByDescending(l => l.OrderDate)
-                .ToListAsync();
+            return await SearchLabOrdersAsync(null);
         }
 
         public async Task<LabOrder?> GetLabOrderByIdAsync(int id)
@@ -52,46 +54,35 @@ namespace BillingSystem.Services
                 .ToListAsync();
         }
 
-        public async Task<LabOrder> CreateLabOrderAsync(LabOrder labOrder)
+        public async Task CreateLabOrdersAsync(int appointmentId, List<string> testNames)
         {
-            if (string.IsNullOrWhiteSpace(labOrder.TestName))
-                throw new ArgumentException("Test name is required.");
+            if (testNames == null || !testNames.Any())
+                throw new ArgumentException("No tests selected.");
 
-            var appointment = await _context.Appointments.Include(a => a.Patient).FirstOrDefaultAsync(a => a.AppointmentId == labOrder.AppointmentId);
-            if (appointment == null)
-                throw new InvalidOperationException($"Appointment with ID {labOrder.AppointmentId} not found.");
-
-            // Rule: Duplicate Lab Order Prevention (Appointment Level)
-            var isDuplicateForAppointment = await _context.LabOrders
-                .AnyAsync(l => l.AppointmentId == labOrder.AppointmentId && 
-                               l.TestName == labOrder.TestName);
-
-            if (isDuplicateForAppointment)
-            {
-                throw new InvalidOperationException($"A lab order for '{labOrder.TestName}' has already been placed for this appointment.");
-            }
-
-            // Rule: Duplicate ECG Prevention (Patient Level - Only if already Completed)
-            if (labOrder.TestName.Equals("ECG", StringComparison.OrdinalIgnoreCase))
-            {
-                var hasCompletedECG = await _context.LabOrders
-                    .AnyAsync(l => l.Appointment.PatientId == appointment.PatientId && 
-                                   l.TestName == "ECG" && 
-                                   l.Status == "Completed");
-                
-                if (hasCompletedECG)
-                {
-                    throw new InvalidOperationException("This patient has already completed an ECG. Duplicate ECG orders are not allowed.");
-                }
-            }
-
-            labOrder.Appointment = appointment;
-            labOrder.OrderDate = DateTime.Now;
-            labOrder.Status = "Pending";
+            // 1. Fetch Costs
+            var services = await _unitOfWork.Repository<ServiceMaster>().GetAllAsync();
             
-            await _unitOfWork.Repository<LabOrder>().AddAsync(labOrder);
-            await _unitOfWork.CompleteAsync();
-            return labOrder;
+            // 2. Construct TVP
+            var table = new DataTable();
+            table.Columns.Add("TestName", typeof(string));
+            table.Columns.Add("Cost", typeof(decimal));
+
+            foreach (var testName in testNames)
+            {
+                var service = services.FirstOrDefault(s => s.ServiceName.Equals(testName, StringComparison.OrdinalIgnoreCase));
+                decimal cost = service?.Cost ?? 0;
+                table.Rows.Add(testName, cost);
+            }
+
+            try
+            {
+                await _unitOfWork.Patients.OrderLabTestsSPAsync(appointmentId, table);
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains("500")) throw new InvalidOperationException(ex.Message);
+                throw;
+            }
         }
 
         public async Task UpdateLabOrderAsync(LabOrder labOrder)
@@ -106,20 +97,13 @@ namespace BillingSystem.Services
 
         public async Task UpdateLabOrderStatusAsync(int labOrderId, string status, string? results = null)
         {
-            var labOrder = await _unitOfWork.Repository<LabOrder>().GetByIdAsync(labOrderId);
-            if (labOrder == null)
-                throw new InvalidOperationException($"Lab order with ID {labOrderId} not found.");
-
-            labOrder.Status = status;
-            labOrder.Results = results;
-
+            DateTime? completedDate = null;
             if (status == "Completed")
             {
-                labOrder.CompletedDate = DateTime.Now;
+                completedDate = DateTime.Now;
             }
 
-            _unitOfWork.Repository<LabOrder>().Update(labOrder);
-            await _unitOfWork.CompleteAsync();
+            await _unitOfWork.Patients.UpdateLabResultSPAsync(labOrderId, status, results, completedDate);
         }
 
         public async Task DeleteLabOrderAsync(int id)

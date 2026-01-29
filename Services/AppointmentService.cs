@@ -3,7 +3,6 @@ using BillingSystem.Models;
 using BillingSystem.Repositories;
 using BillingSystem.DTOs;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Data.SqlClient;
 
 namespace BillingSystem.Services
 {
@@ -50,41 +49,33 @@ namespace BillingSystem.Services
 
         public async Task<Appointment> CreateAppointmentAsync(Appointment appointment)
         {
-            var now = DateTime.Now;
-            if (appointment.AppointmentDate.Date < now.Date)
-                throw new ArgumentException("Appointment date cannot be in the past.");
+             try 
+             {
+                 var newId = await _unitOfWork.Patients.CreateAppointmentSPAsync(appointment);
 
-            if (appointment.AppointmentDate.Date == now.Date && appointment.AppointmentTime <= now.TimeOfDay)
-                throw new ArgumentException("Appointment time has already passed for today.");
+                appointment.AppointmentId = newId;
+                appointment.Status = "Scheduled"; // Set purely for the return object
+                return appointment;
+             }
+             catch (Exception ex)
+             {
+                 if (ex.Message.Contains("500")) throw new InvalidOperationException(ex.Message); // Basic check, better to catch SqlException in repo
+                 throw;
+             }
+        }
 
-            if (!appointment.DoctorId.HasValue)
-                throw new ArgumentException("Please select a doctor.");
 
-            var patient = await _context.Patients.FindAsync(appointment.PatientId);
-            if (patient == null || !patient.IsActive)
-                throw new InvalidOperationException("Cannot schedule appointment: Patient is inactive or not found.");
-
-            var doctor = await _context.Doctors.FindAsync(appointment.DoctorId.Value);
-            if (doctor == null || !doctor.IsAvailable)
-                throw new InvalidOperationException("Selected doctor is not available.");
-
-            // STRICT DOUBLE-BOOKING CHECK
-            var isSlotTaken = await _context.Appointments
-                .AnyAsync(a => a.DoctorId == appointment.DoctorId 
-                            && a.AppointmentDate.Date == appointment.AppointmentDate.Date 
-                            && a.AppointmentTime == appointment.AppointmentTime
-                            && a.Status != "Cancelled");
-
-            if (isSlotTaken)
-                throw new InvalidOperationException("The selected slot is already taken for this doctor.");
-
-            appointment.CreatedDate = DateTime.Now;
-            appointment.Status = "Scheduled";
-            appointment.IsPaid = false;
-
-            await _unitOfWork.Repository<Appointment>().AddAsync(appointment);
-            await _unitOfWork.CompleteAsync();
-            return appointment;
+        public async Task UpdateAppointmentStatusAsync(int appointmentId, string newStatus)
+        {
+             try
+             {
+                 await _unitOfWork.Patients.UpdateAppointmentStatusSPAsync(appointmentId, newStatus);
+             }
+             catch (Exception ex)
+             {
+                 if (ex.Message.Contains("500")) throw new InvalidOperationException(ex.Message);
+                 throw;
+             }
         }
 
         public async Task UpdateAppointmentAsync(Appointment appointment)

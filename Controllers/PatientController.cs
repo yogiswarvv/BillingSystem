@@ -137,46 +137,21 @@ namespace BillingSystem.Controllers
                     Gender = model.Gender,
                     MobileNumber = model.MobileNumber,
                     Email = model.Email,
-                    CreatedBy = model.CreatedBy,
                     CreatedDate = DateTime.Now
                 };
-
-                // 2. Admission (Optional at registration)
-                if (model.AdmitDays > 0)
-                {
-                    patient.Admissions.Add(new Admission
-                    {
-                        AdmitDays = model.AdmitDays,
-                        FeePerDay = 2000, 
-                        AdmitDate = DateTime.Now,
-                        DischargeDate = DateTime.Now.AddDays(model.AdmitDays)
-                    });
-                }
-
-                // 3. Insurance (Optional at registration)
-                if (!string.IsNullOrEmpty(model.InsuranceProvider) && !string.IsNullOrEmpty(model.PolicyNumber))
-                {
-                    patient.Insurances.Add(new Insurance
-                    {
-                        ProviderName = model.InsuranceProvider,
-                        PolicyNumber = model.PolicyNumber,
-                        CoveragePercent = 100, // Default to full, logic will auto-adjust based on Registry
-                        CoverageType = InsuranceCoverageType.FullBill,
-                        IsActive = true
-                    });
-                }
-
+ 
+                // 4. Register via Service (SP)
                 try 
                 {
-                    // 4. Register via Service
+                    // Call SP to register patient (Returns ID)
                     var patientId = await _patientService.RegisterPatientAsync(patient);
-
+ 
                     // Redirect Logic based on Role
                     if (User.IsInRole("Admin"))
                     {
                         return RedirectToAction("Index");
                     }
-
+ 
                     // Redirect to Automatic Billing for Billing Staff
                     return RedirectToAction("GenerateBill", "Billing", new { patientId = patientId });
                 }
@@ -246,47 +221,16 @@ namespace BillingSystem.Controllers
             var patient = await _unitOfWork.Patients.GetByIdAsync(id);
             if (patient == null) return NotFound();
 
-            // 1. Check for Active Admission
-            var alreadyAdmitted = (await _unitOfWork.Repository<Admission>().FindAsync(a => a.PatientId == id && a.DischargeDate == null)).Any();
-            if (alreadyAdmitted)
+            try 
             {
-                TempData["ErrorMessage"] = "Patient is already admitted.";
-                return RedirectToAction(nameof(Details), new { id });
+                await _patientService.AdmitPatientAsync(id, DateTime.Now);
+                TempData["SuccessMessage"] = "Patient admitted successfully.";
             }
-
-            // 2. SAME-DAY ADMISSION CHECK (Task 39)
-            // If patient was discharged TODAY, reuse the record to prevent duplicate billing.
-            var today = DateTime.Today;
-            var dischargedToday = (await _unitOfWork.Repository<Admission>()
-                .FindAsync(a => a.PatientId == id && a.DischargeDate != null))
-                .Where(a => a.DischargeDate.Value.Date == today)
-                .OrderByDescending(a => a.DischargeDate)
-                .FirstOrDefault();
-
-            if (dischargedToday != null)
+            catch (Exception ex)
             {
-                // Reactivate existing admission
-                dischargedToday.DischargeDate = null;
-                _unitOfWork.Repository<Admission>().Update(dischargedToday);
-                await _unitOfWork.CompleteAsync();
-                
-                TempData["SuccessMessage"] = "Patient re-admitted (Same-Day Continuation).";
-                return RedirectToAction(nameof(Details), new { id });
+                TempData["ErrorMessage"] = ex.Message;
             }
-
-            // 3. New Admission
-            var admission = new Admission
-            {
-                PatientId = id,
-                AdmitDate = DateTime.Now,
-                FeePerDay = 2000m,
-                IsPaid = false
-            };
-
-            await _unitOfWork.Repository<Admission>().AddAsync(admission);
-            await _unitOfWork.CompleteAsync();
-
-            TempData["SuccessMessage"] = "Patient admitted successfully.";
+            
             return RedirectToAction(nameof(Details), new { id });
         }
 

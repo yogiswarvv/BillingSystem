@@ -34,21 +34,6 @@ namespace BillingSystem.ViewModels
 
         [EmailAddress]
         public string? Email { get; set; }
-
-        [Display(Name = "Created By")]
-        public string? CreatedBy { get; set; }
-
-        // Admission
-        [Display(Name = "Admit Days (Default 0 if not admitted)")]
-        [Range(0, 365)]
-        public int AdmitDays { get; set; }
-
-        // Insurance
-        [Display(Name = "Insurance Provider (Optional)")]
-        public string? InsuranceProvider { get; set; }
-
-        [Display(Name = "Policy Number (Optional)")]
-        public string? PolicyNumber { get; set; }
     }
 
     public class AppointmentVM

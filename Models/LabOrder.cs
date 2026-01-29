@@ -17,6 +17,9 @@ namespace BillingSystem.Models
         [MaxLength(200)]
         public string TestName { get; set; } = string.Empty;
 
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? Cost { get; set; }
+
         public DateTime OrderDate { get; set; } = DateTime.Now;
 
         [MaxLength(20)]

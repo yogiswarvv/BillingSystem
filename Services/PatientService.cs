@@ -15,6 +15,7 @@ namespace BillingSystem.Services
         Task<Patient?> GetPatientByMobileAsync(string mobileNumber);
         Task DeletePatientAsync(int patientId, string? deletedBy = null);
         Task ActivatePatientAsync(int patientId);
+        Task AdmitPatientAsync(int patientId, DateTime admitDate, decimal feePerDay = 2000m);
     }
 
     public class PatientService : IPatientService
@@ -30,21 +31,15 @@ namespace BillingSystem.Services
 
         public async Task<int> RegisterPatientAsync(Patient patient)
         {
-            // Business Rule: Check Mobile Number Uniqueness
-            if (await _unitOfWork.Patients.IsMobileNumberExistsAsync(patient.MobileNumber))
+            try
             {
-                throw new Exception($"Mobile Number {patient.MobileNumber} already exists.");
+                return await _unitOfWork.Patients.RegisterPatientSPAsync(patient);
             }
-
-            // Senior Citizen logic is now handled automatically by the Patient model age calculation.
-
-            patient.CreatedDate = DateTime.Now;
-            patient.IsActive = true;
-
-            await _unitOfWork.Patients.AddAsync(patient);
-            await _unitOfWork.CompleteAsync();
-
-            return patient.PatientId;
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains("already exists")) throw new Exception($"Mobile Number {patient.MobileNumber} already exists."); // Basic check
+                 throw;
+            }
         }
 
         public async Task UpdatePatientAsync(Patient patient)
@@ -109,7 +104,12 @@ namespace BillingSystem.Services
                 throw new InvalidOperationException("Bill Not Paid: Cannot delete patient because pending payments exist.");
             }
 
-            // Rule: Record Deletion Handling
+            // Rule: Record Deletion Handling (Archiving) - Kept as C# logic per requirements to store in PastRecordPatients
+            // The SP only soft deletes the main record. We still want to archive it first as per the original code logic.
+            // Or, we assume the SP is the *only* thing we do. 
+            // The user asked to "use this stored procedures". The SP does: UPDATE IsActive=0, DeletedDate, DeletedBy.
+            // The original logic also created a `PastRecordPatient`. I will keep the Archive creation in C# but replace the UPDATE with SP.
+            
             var deletedPatientRecord = new PastRecordPatient
             {
                 OriginalPatientId = patient.PatientId,
@@ -126,9 +126,24 @@ namespace BillingSystem.Services
             };
 
             await _context.PastRecordPatients.AddAsync(deletedPatientRecord);
-            patient.IsActive = false;
-            _unitOfWork.Patients.Update(patient);
-            await _unitOfWork.CompleteAsync();
+            await _context.SaveChangesAsync(); // Save archive first
+
+            // Call Stored Procedure for Soft Delete
+            await _unitOfWork.Patients.SoftDeletePatientSPAsync(patientId, deletedBy ?? "SYSTEM");
+        }
+
+        public async Task AdmitPatientAsync(int patientId, DateTime admitDate, decimal feePerDay = 2000m)
+        {
+            try
+            {
+                await _unitOfWork.Patients.AdmitPatientSPAsync(patientId, admitDate, feePerDay);
+            }
+            catch (Exception ex)
+            {
+                 // Map SQL errors to readable exceptions
+                 if (ex.Message.Contains("500")) throw new Exception(ex.Message);
+                 throw;
+            }
         }
 
         public async Task ActivatePatientAsync(int patientId)
