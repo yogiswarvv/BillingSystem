@@ -12,11 +12,11 @@ namespace BillingSystem.ViewModels
         public string AgeGender { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         
-        // Appointment Info for "Tomorrow"
-        public string TomorrowAppointmentTime { get; set; } = "No Appointment";
+        // Appointment Info for "Upcoming"
+        public string NextAppointmentDisplay { get; set; } = "No Appointment";
         public string AppointmentStatus { get; set; } = "N/A";
         public int? AppointmentId { get; set; }
-        public bool HasAppointmentTomorrow { get; set; }
+        public bool HasUpcomingAppointment { get; set; }
         
         // Statistics
         public int PendingLabOrders { get; set; }
@@ -29,6 +29,6 @@ namespace BillingSystem.ViewModels
     {
         public List<PatientDashboardVM> Patients { get; set; } = new();
         public int TotalPatientsCount { get; set; }
-        public int AppointmentsTomorrowCount { get; set; }
+        public int UpcomingAppointmentsCount { get; set; }
     }
 }

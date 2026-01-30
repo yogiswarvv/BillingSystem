@@ -95,6 +95,10 @@ namespace BillingSystem.Controllers
                 PolicyNumber = activeInsurance?.PolicyNumber,
                 CoverageType = activeInsurance?.CoverageType ?? InsuranceCoverageType.FullBill,
                 CoveragePercent = (decimal)(activeInsurance?.CoveragePercent ?? 0),
+                ApplyInsuranceToConsultation = true,
+                ApplyInsuranceToPharmacy = true,
+                ApplyInsuranceToLabs = true,
+                ApplyInsuranceToAdmission = true,
                 AvailableServices = nonLabServices.Select(s => new SelectListItem { Value = s.ServiceId.ToString(), Text = $"{s.ServiceName} ({s.Cost:C})" }).ToList(),
                 AvailableProviders = (await _insuranceService.GetLinkedProvidersAsync()).Select(p => new SelectListItem { Value = p.ProviderName, Text = p.ProviderName }).ToList()
             };
@@ -132,7 +136,7 @@ namespace BillingSystem.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> GeneratePreview(int patientId, bool applyInsurance, List<int> selectedServiceIds, InsuranceCoverageType? insuranceType, double? insurancePercent, string? policyNumber, string? providerName)
+        public async Task<IActionResult> GeneratePreview(int patientId, bool applyInsurance, List<int> selectedServiceIds, InsuranceCoverageType? insuranceType, double? insurancePercent, string? policyNumber, string? providerName, bool applyInsuranceToConsultation, bool applyInsuranceToPharmacy, bool applyInsuranceToLabs, bool applyInsuranceToAdmission)
         {
              var request = new BillCalculationRequestDto
              {
@@ -142,7 +146,11 @@ namespace BillingSystem.Controllers
                  InsuranceType = insuranceType,
                  InsurancePercent = insurancePercent,
                  PolicyNumber = policyNumber,
-                 ProviderName = providerName
+                 ProviderName = providerName,
+                 ApplyInsuranceToConsultation = applyInsuranceToConsultation,
+                 ApplyInsuranceToPharmacy = applyInsuranceToPharmacy,
+                 ApplyInsuranceToLabs = applyInsuranceToLabs,
+                 ApplyInsuranceToAdmission = applyInsuranceToAdmission
              };
              
              try 
@@ -181,7 +189,11 @@ namespace BillingSystem.Controllers
                 InsuranceType = model.CoverageType,
                 InsurancePercent = (double)model.CoveragePercent,
                 PolicyNumber = model.PolicyNumber,
-                ProviderName = model.ProviderName
+                ProviderName = model.ProviderName,
+                ApplyInsuranceToConsultation = model.ApplyInsuranceToConsultation,
+                ApplyInsuranceToPharmacy = model.ApplyInsuranceToPharmacy,
+                ApplyInsuranceToLabs = model.ApplyInsuranceToLabs,
+                ApplyInsuranceToAdmission = model.ApplyInsuranceToAdmission
             };
 
             try 

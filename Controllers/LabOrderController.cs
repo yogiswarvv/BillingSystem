@@ -44,6 +44,12 @@ namespace BillingSystem.Controllers
             var appointment = await _appointmentService.GetAppointmentByIdAsync(appointmentId);
             if (appointment == null) return NotFound();
 
+            if (appointment.Status == "Cancelled")
+            {
+                TempData["ErrorMessage"] = "Cannot order lab tests for a cancelled appointment.";
+                return RedirectToAction("Details", "Appointment", new { id = appointmentId });
+            }
+
             // Fetch actual services from Billing Master
             var services = await _billingService.GetAllServicesAsync();
             
@@ -88,6 +94,12 @@ namespace BillingSystem.Controllers
             {
                 try
                 {
+                    var appointment = await _appointmentService.GetAppointmentByIdAsync(model.AppointmentId);
+                    if (appointment != null && appointment.Status == "Cancelled")
+                    {
+                        throw new Exception("Cannot add lab orders to a cancelled appointment.");
+                    }
+
                     await _labOrderService.CreateLabOrdersAsync(model.AppointmentId, model.SelectedTestNames);
 
                     if (!string.IsNullOrEmpty(model.ReturnUrl))

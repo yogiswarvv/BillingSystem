@@ -48,6 +48,11 @@ namespace BillingSystem.ViewModels
         [Display(Name = "Coverage %")]
         public decimal CoveragePercent { get; set; }
 
+        public bool ApplyInsuranceToConsultation { get; set; } = true;
+        public bool ApplyInsuranceToPharmacy { get; set; } = true;
+        public bool ApplyInsuranceToLabs { get; set; } = true;
+        public bool ApplyInsuranceToAdmission { get; set; } = true;
+
         // Preview
         public BillGenerationPreviewViewModel? BillPreview { get; set; }
     }

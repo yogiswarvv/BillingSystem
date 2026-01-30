@@ -55,6 +55,7 @@ namespace BillingSystem.Services
             // 2. Lab Orders
             decimal labTotal = 0;
             var unpaidLabs = patient.Appointments
+                .Where(a => a.Status != "Cancelled")
                 .SelectMany(a => a.LabOrders)
                 .Where(l => !l.IsPaid) // include both Pending and Completed if unpaid
                 .ToList();
@@ -79,6 +80,7 @@ namespace BillingSystem.Services
             // 3. Pharmacy Charges (Prescriptions)
             decimal pharmacyTotal = 0;
             var unpaidPrescriptions = patient.Appointments
+                .Where(a => a.Status != "Cancelled")
                 .SelectMany(a => a.Prescriptions)
                 .Where(p => !p.IsPaid)
                 .ToList();
@@ -92,9 +94,13 @@ namespace BillingSystem.Services
                     pharmacyTotal += amount;
                     result.Items.Add(new BillItemDto
                     {
-                        Description = $"Med: {medicine.Name} x{pre.ActualQuantity}",
+                        Description = $"Med: {medicine.Name}",
                         Amount = amount,
-                        Type = BillItemType.Service
+                        Type = BillItemType.Service,
+                        ReferenceId = pre.PrescriptionId,
+                        SuggestedQuantity = pre.SuggestedQuantity,
+                        ActualQuantity = pre.ActualQuantity,
+                        UnitPrice = medicine.PricePerUnit
                     });
                 }
             }
@@ -122,14 +128,22 @@ namespace BillingSystem.Services
             // 5. Gross Total
             result.GrossTotal = consultationFee + labTotal + pharmacyTotal + admitTotal;
 
-            // 5. Discount Rules
             decimal currentTotal = result.GrossTotal;
+            decimal insurableTotal = 0;
 
-            // 5% if > 2000
+            if (request.ApplyInsuranceToConsultation) insurableTotal += consultationFee;
+            if (request.ApplyInsuranceToLabs) insurableTotal += labTotal;
+            if (request.ApplyInsuranceToPharmacy) insurableTotal += pharmacyTotal;
+            if (request.ApplyInsuranceToAdmission) insurableTotal += admitTotal;
+
+            // 5. Discount Rules
+            // ... (rest of discounts)
             if (result.GrossTotal > 2000)
             {
                 result.DiscountAmount = result.GrossTotal * 0.05m;
                 currentTotal -= result.DiscountAmount;
+                // Note: Discounts are usually applied proportionally if insurance is partial, 
+                // but here we calculate insurance on the category totals.
                 result.Items.Add(new BillItemDto { Description = "High Value Discount (5%)", Amount = -result.DiscountAmount, Type = BillItemType.Discount });
             }
 
@@ -138,7 +152,7 @@ namespace BillingSystem.Services
             {
                 result.SeniorDiscountAmount = currentTotal * 0.10m;
                 currentTotal -= result.SeniorDiscountAmount;
-                 result.Items.Add(new BillItemDto { Description = "Senior Citizen Discount (10%)", Amount = -result.SeniorDiscountAmount, Type = BillItemType.Discount });
+                result.Items.Add(new BillItemDto { Description = "Senior Citizen Discount (10%)", Amount = -result.SeniorDiscountAmount, Type = BillItemType.Discount });
             }
 
             // 6. Production Insurance Integration
@@ -149,7 +163,6 @@ namespace BillingSystem.Services
                 string? policyNo = request.PolicyNumber;
                 string? providerName = request.ProviderName;
 
-                // Fallback to DB check via SP if not provided in request or to verify
                 if (string.IsNullOrEmpty(policyNo) || string.IsNullOrEmpty(providerName))
                 {
                     var dbInsurance = patient.Insurances.FirstOrDefault(i => i.IsActive);
@@ -162,19 +175,11 @@ namespace BillingSystem.Services
 
                 if (!string.IsNullOrEmpty(policyNo) && !string.IsNullOrEmpty(providerName))
                 {
-                    // 1. Verify via Local SP (Primary)
                     var validInsurance = await _unitOfWork.Bills.CheckPatientInsuranceSPAsync(patient.PatientId, providerName.Trim(), policyNo.Trim());
-                    
-                    // 2. Verify via External Registry (Secondary/Ad-hoc)
                     var member = await insuranceService.ValidateRegistryMemberAsync(providerName, policyNo, patient.FullName, patient.DateOfBirth);
 
-                    // Proceed if EITHER is valid
                     if (validInsurance != null || member != null)
                     {
-                        // Determine Base Coverage Percentage Priority:
-                        // 1. Request Input (UI)
-                        // 2. Local DB (Verified SP)
-                        // 3. External Registry Plan
                         decimal effectivePercent = 0;
                         
                         if (request.InsurancePercent.HasValue && request.InsurancePercent.Value > 0)
@@ -185,28 +190,14 @@ namespace BillingSystem.Services
                         {
                             effectivePercent = (decimal)validInsurance.CoveragePercent;
                         }
-                        else if (member != null)
-                        {
-                            // If we only found it in registry, we might need to fetch plan % (simulated here as 80 default or implied from service? 
-                            // Service CalculateCoverageAsync does lookup. Let's rely on that first.)
-                        }
 
-                        // Calculate Deduction
-                        // Method A: External Service Calculation (if available)
                         if (member != null)
                         {
-                            result.InsuranceDeduction = await insuranceService.CalculateCoverageAsync(providerName, policyNo, currentTotal);
-                             result.InsuranceProvider = member.ProviderName; 
+                            result.InsuranceDeduction = await insuranceService.CalculateCoverageAsync(providerName, policyNo, insurableTotal);
+                            result.InsuranceProvider = member.ProviderName; 
                         }
 
-                        // Method B: Fallback / Override with Effective Percent
-                        // Apply if Method A returned 0 OR we prioritize UI/Local %
                         bool useMethodB = result.InsuranceDeduction == 0;
-                        
-                        // If we have an explicit effective percent, we usually want to trust that (especially UI input)
-                        // But if CalculateCoverageAsync used a specific rule (co-pay etc), we should be careful.
-                        // User request: "it should cover upto 80 percent". 
-                        // If UI says 80%, we force 80%.
                         if (request.InsurancePercent.HasValue && request.InsurancePercent.Value > 0)
                         {
                             useMethodB = true;
@@ -218,16 +209,14 @@ namespace BillingSystem.Services
 
                         if (useMethodB && effectivePercent > 0)
                         {
-                             result.InsuranceDeduction = currentTotal * (effectivePercent / 100m);
+                             result.InsuranceDeduction = insurableTotal * (effectivePercent / 100m);
                              result.CoveragePercent = (double)effectivePercent; 
                         }
 
-                        // Cap
                         if(result.InsuranceDeduction > currentTotal) result.InsuranceDeduction = currentTotal;
 
                         currentTotal -= result.InsuranceDeduction;
                         
-                        // Visual Props
                         var displayProvider = member?.ProviderName ?? validInsurance?.ProviderName ?? providerName;
                         result.InsuranceProvider = displayProvider;
                         
@@ -238,7 +227,6 @@ namespace BillingSystem.Services
                             Type = BillItemType.Insurance 
                         });
                         
-                        // Final consistency check for return DTO
                         if (result.CoveragePercent == 0 && effectivePercent > 0) result.CoveragePercent = (double)effectivePercent;
                     }
                 }

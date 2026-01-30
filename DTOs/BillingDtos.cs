@@ -13,6 +13,13 @@ namespace BillingSystem.DTOs
         public List<int> SelectedLabOrderIds { get; set; } = new List<int>();
         public List<int> SelectedPrescriptionIds { get; set; } = new List<int>();
         public bool IncludeConsultationFee { get; set; } = true;
+
+        // Selective Insurance Categories
+        public bool ApplyInsuranceToConsultation { get; set; } = true;
+        public bool ApplyInsuranceToPharmacy { get; set; } = true;
+        public bool ApplyInsuranceToLabs { get; set; } = true;
+        public bool ApplyInsuranceToAdmission { get; set; } = true;
+
         public string? PolicyNumber { get; set; }
         public string? ProviderName { get; set; }
     }
@@ -43,7 +50,11 @@ namespace BillingSystem.DTOs
     {
         public string Description { get; set; } = string.Empty;
         public decimal Amount { get; set; }
-        public BillItemType Type { get; set; } 
+        public BillItemType Type { get; set; }
+        public int? ReferenceId { get; set; } // e.g., PrescriptionId
+        public int? SuggestedQuantity { get; set; }
+        public int? ActualQuantity { get; set; }
+        public decimal? UnitPrice { get; set; }
     }
 
     public class LabOrderListDto

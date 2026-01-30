@@ -37,6 +37,31 @@
                         <div id="insuranceDetails" class="@(Model.HasInsurance ? "" : "d-none")">
                             <div class="row g-2 mt-2">
                                 <div class="col-12">
+                                    <div class="card bg-white border mb-2">
+                                        <div class="card-body p-2 pt-1">
+                                            <small class="text-muted d-block mb-2 border-bottom pb-1 fw-bold text-uppercase">Include in Insurance:</small>
+                                            <div class="d-flex flex-wrap gap-3">
+                                                <div class="form-check form-switch small">
+                                                    <input class="form-check-input chk-category" type="checkbox" asp-for="ApplyInsuranceToConsultation" id="chkInsConsult">
+                                                    <label class="form-check-label" for="chkInsConsult">Consultation</label>
+                                                </div>
+                                                <div class="form-check form-switch small">
+                                                    <input class="form-check-input chk-category" type="checkbox" asp-for="ApplyInsuranceToPharmacy" id="chkInsPharmacy">
+                                                    <label class="form-check-label" for="chkInsPharmacy">Pharmacy</label>
+                                                </div>
+                                                <div class="form-check form-switch small">
+                                                    <input class="form-check-input chk-category" type="checkbox" asp-for="ApplyInsuranceToLabs" id="chkInsLabs">
+                                                    <label class="form-check-label" for="chkInsLabs">Labs</label>
+                                                </div>
+                                                <div class="form-check form-switch small">
+                                                    <input class="form-check-input chk-category" type="checkbox" asp-for="ApplyInsuranceToAdmission" id="chkInsAdmit">
+                                                    <label class="form-check-label" for="chkInsAdmit">Admission</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <small class="text-muted fw-bold">Verification Status:</small>
                                         <span id="verificationBadge" class="badge bg-secondary">Pending</span>
@@ -89,6 +114,10 @@
                     <input type="hidden" asp-for="CoveragePercent" id="hdnPercent" />
                     <input type="hidden" asp-for="PolicyNumber" id="hdnPolicy" />
                     <input type="hidden" asp-for="ProviderName" id="hdnProvider" />
+                    <input type="hidden" asp-for="ApplyInsuranceToConsultation" id="hdnInsConsult" />
+                    <input type="hidden" asp-for="ApplyInsuranceToPharmacy" id="hdnInsPharmacy" />
+                    <input type="hidden" asp-for="ApplyInsuranceToLabs" id="hdnInsLabs" />
+                    <input type="hidden" asp-for="ApplyInsuranceToAdmission" id="hdnInsAdmit" />
                     
                     <button type="submit" class="btn btn-success btn-lg px-5 fw-bold shadow pulse-button">
                         <i class="bi bi-check-circle-fill"></i> GENERATE FINAL BILL
@@ -111,6 +140,10 @@
                 $('#hdnInsurance').val(isChecked);
                 $('#hdnCoverage').val($('#ddlCoverage').val());
                 $('#hdnPercent').val($('#txtPercent').val());
+                $('#hdnInsConsult').val($('#chkInsConsult').is(':checked'));
+                $('#hdnInsPharmacy').val($('#chkInsPharmacy').is(':checked'));
+                $('#hdnInsLabs').val($('#chkInsLabs').is(':checked'));
+                $('#hdnInsAdmit').val($('#chkInsAdmit').is(':checked'));
                 
                 $.post('@Url.Action("GeneratePreview", "Billing")', { 
                     patientId: @Model.PatientId, 
@@ -118,7 +151,11 @@
                     insuranceType: $('#ddlCoverage').val(),
                     insurancePercent: $('#txtPercent').val(),
                     policyNumber: $('#txtPolicy').val(),
-                    providerName: $('#ddlProvider').val()
+                    providerName: $('#ddlProvider').val(),
+                    applyInsuranceToConsultation: $('#chkInsConsult').is(':checked'),
+                    applyInsuranceToPharmacy: $('#chkInsPharmacy').is(':checked'),
+                    applyInsuranceToLabs: $('#chkInsLabs').is(':checked'),
+                    applyInsuranceToAdmission: $('#chkInsAdmit').is(':checked')
                 })
                 .done(function(data) {
                     $('#billPreviewContainer').html(data);
@@ -126,8 +163,8 @@
             }
 
             // Bind triggers
-            $('#chkInsurance').change(function() {
-                if(this.checked) $('#insuranceDetails').removeClass('d-none');
+            $('#chkInsurance, .chk-category').change(function() {
+                if($('#chkInsurance').is(':checked')) $('#insuranceDetails').removeClass('d-none');
                 else $('#insuranceDetails').addClass('d-none');
                 updatePreview();
             });
@@ -174,6 +211,29 @@
                 }
             }
             $('#ddlProvider, #txtPolicy').change(fetchInsurance);
+
+            // Quantity Update for Prescriptions
+            $(document).on('change', '.txt-quantity', function() {
+                var prescriptionId = $(this).data('id');
+                var newQty = $(this).val();
+                
+                if (newQty < 0) {
+                    alert("Quantity cannot be negative.");
+                    return;
+                }
+
+                var $input = $(this);
+                $input.prop('disabled', true);
+
+                $.post('/Prescription/UpdateActualQuantity', { id: prescriptionId, quantity: newQty })
+                .done(function() {
+                    updatePreview();
+                })
+                .fail(function() {
+                    alert("Failed to update quantity. Please try again.");
+                    $input.prop('disabled', false);
+                });
+            });
 
             // Initial setup
             $('#hdnInsurance').val($('#chkInsurance').is(':checked'));

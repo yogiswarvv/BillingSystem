@@ -216,7 +216,14 @@
                                                     </span>
                                                 </td>
                                                 <td class="text-end pe-4">
-                                                    <a asp-controller="Appointment" asp-action="Details" asp-route-id="@appt.AppointmentId" class="btn btn-sm btn-light rounded-pill px-3 transition-up">View Case</a>
+                                                    @if (appt.Status == "Cancelled")
+                                                    {
+                                                        <span class="btn btn-sm btn-light rounded-pill px-3 opacity-50 cursor-not-allowed" title="Cancelled cases cannot be viewed.">View Case</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <a asp-controller="Appointment" asp-action="Details" asp-route-id="@appt.AppointmentId" class="btn btn-sm btn-light rounded-pill px-3 transition-up">View Case</a>
+                                                    }
                                                 </td>
                                             </tr>
                                         }
@@ -288,13 +295,23 @@
                             <div class="p-4 bg-danger bg-opacity-10 border-bottom">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <h5 class="fw-bold mb-0 text-danger"><i class="bi bi-hospital-fill me-2"></i> IPD - In-Patient Unit</h5>
-                                    @if (!Model.IsAdmitted)
+                                    @{ 
+                                        var activeApptForAdmission = Model.Appointments.FirstOrDefault(a => a.Status != "Cancelled");
+                                        var overallLatestAppt = Model.Appointments.FirstOrDefault(); 
+                                    }
+                                    @if (!Model.IsAdmitted && activeApptForAdmission != null)
                                     {
                                         <form asp-action="Admit" asp-route-id="@Model.Patient.PatientId" method="post">
                                             <button type="submit" class="btn btn-danger btn-sm rounded-pill px-4 fw-bold shadow-sm hover-scale">
                                                 <i class="bi bi-door-closed me-1"></i> Register Room Admission
                                             </button>
                                         </form>
+                                    }
+                                    else if (!Model.IsAdmitted && overallLatestAppt != null && activeApptForAdmission == null)
+                                    {
+                                        <div class="alert alert-warning py-2 mb-0 small">
+                                            <i class="bi bi-exclamation-triangle me-2"></i> Admission disabled: No active appointments found.
+                                        </div>
                                     }
                                 </div>
                             </div>
@@ -478,6 +495,8 @@
         70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
         100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
     }
+
+    .cursor-not-allowed { cursor: not-allowed !important; }
 
     .sticky-top {
         transition: top 0.3s ease;

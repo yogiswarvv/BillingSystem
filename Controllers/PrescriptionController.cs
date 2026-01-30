@@ -26,14 +26,24 @@ namespace BillingSystem.Controllers
             if (appointment == null) return NotFound();
 
             var medicines = await _context.Medicines.Where(m => m.IsActive).ToListAsync();
+            
+            if (appointment.Status == "Cancelled")
+            {
+                TempData["ErrorMessage"] = "Cannot add prescriptions to a cancelled appointment.";
+                return RedirectToAction("Details", "Appointment", new { id = appointmentId });
+            }
+
             var model = new BulkPrescriptionVM
             {
                 AppointmentId = appointmentId,
                 PatientName = appointment.Patient.FullName,
-                AvailableMedicines = medicines.Select(m => new SelectListItem 
-                { 
-                    Value = m.MedicineId.ToString(), 
-                    Text = $"[{m.DosageStrength}] {m.Name}" 
+                Medicines = medicines.Select(m => new MedicineSelectionVM
+                {
+                    MedicineId = m.MedicineId,
+                    Name = m.Name,
+                    Dosage = m.DosageStrength ?? "N/A",
+                    IsSelected = false,
+                    Quantity = 1
                 }).ToList()
             };
 
@@ -43,16 +53,25 @@ namespace BillingSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> BulkCreate(BulkPrescriptionVM model)
         {
-            if (model.SelectedMedicineIds != null && model.SelectedMedicineIds.Any())
+            var appointment = await _appointmentService.GetAppointmentByIdAsync(model.AppointmentId);
+            if (appointment != null && appointment.Status == "Cancelled")
             {
-                foreach (var medId in model.SelectedMedicineIds)
+                TempData["ErrorMessage"] = "Cannot add prescriptions to a cancelled appointment.";
+                return RedirectToAction("Details", "Appointment", new { id = model.AppointmentId });
+            }
+
+            var selectedMedications = model.Medicines.Where(m => m.IsSelected).ToList();
+
+            if (selectedMedications.Any())
+            {
+                foreach (var item in selectedMedications)
                 {
                     var prescription = new Prescription
                     {
                         AppointmentId = model.AppointmentId,
-                        MedicineId = medId,
-                        SuggestedQuantity = 1, // Defaulting to 1 for bulk, can be updated in Dispense
-                        ActualQuantity = 1,
+                        MedicineId = item.MedicineId,
+                        SuggestedQuantity = item.Quantity,
+                        ActualQuantity = item.Quantity,
                         Status = "Suggested",
                         IsPaid = false
                     };
@@ -62,12 +81,15 @@ namespace BillingSystem.Controllers
                 return RedirectToAction("Details", "Appointment", new { id = model.AppointmentId });
             }
 
-            // Re-populate if fails
+            // Re-populate if fails or none selected
             var medicines = await _context.Medicines.Where(m => m.IsActive).ToListAsync();
-            model.AvailableMedicines = medicines.Select(m => new SelectListItem 
-            { 
-                Value = m.MedicineId.ToString(), 
-                Text = $"[{m.DosageStrength}] {m.Name}" 
+            model.Medicines = medicines.Select(m => new MedicineSelectionVM
+            {
+                MedicineId = m.MedicineId,
+                Name = m.Name,
+                Dosage = m.DosageStrength ?? "N/A",
+                IsSelected = false,
+                Quantity = 1
             }).ToList();
 
             return View("BulkCreate", model);
@@ -76,6 +98,13 @@ namespace BillingSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(PrescriptionCreateVM model)
         {
+            var appointment = await _appointmentService.GetAppointmentByIdAsync(model.AppointmentId);
+            if (appointment != null && appointment.Status == "Cancelled")
+            {
+                TempData["ErrorMessage"] = "Cannot add prescriptions to a cancelled appointment.";
+                return RedirectToAction("Details", "Appointment", new { id = model.AppointmentId });
+            }
+
             if (ModelState.IsValid)
             {
                 var prescription = new Prescription
@@ -140,6 +169,22 @@ namespace BillingSystem.Controllers
                 return RedirectToAction("Details", "Appointment", new { id = prescription.AppointmentId });
             }
             return View(model);
+        }
+        [HttpPost]
+        public async Task<IActionResult> UpdateActualQuantity(int id, int quantity)
+        {
+            if (quantity < 0) return BadRequest("Quantity cannot be negative.");
+
+            var prescription = await _context.Prescriptions.FindAsync(id);
+            if (prescription == null) return NotFound();
+
+            prescription.ActualQuantity = quantity;
+            // Note: We don't change status to Purchased here, that happens when the bill is PAID.
+            
+            _context.Prescriptions.Update(prescription);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true });
         }
     }
 }

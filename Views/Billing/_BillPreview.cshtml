@@ -11,6 +11,8 @@
                 <thead class="bg-light">
                     <tr>
                         <th class="ps-4 py-3">Description</th>
+                        <th class="text-center">Suggested</th>
+                        <th class="text-center">Patient Choice</th>
                         <th class="text-end py-3">Category</th>
                         <th class="text-end pe-4 py-3">Amount</th>
                     </tr>
@@ -19,7 +21,31 @@
                     @foreach (var item in Model.Items.Where(i => i.Amount > 0))
                     {
                         <tr>
-                            <td class="ps-4 py-3">@item.Description</td>
+                            <td class="ps-4 py-3">
+                                @item.Description
+                                @if (item.UnitPrice.HasValue)
+                                {
+                                    <br/><small class="text-muted">Rate: @item.UnitPrice.Value.ToString("C")</small>
+                                }
+                            </td>
+                            <td class="text-center">
+                                @(item.SuggestedQuantity?.ToString() ?? "-")
+                            </td>
+                            <td class="text-center" style="width: 150px;">
+                                @if (item.ReferenceId.HasValue && item.ActualQuantity.HasValue)
+                                {
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control form-control-sm txt-quantity text-center" 
+                                               data-id="@item.ReferenceId" 
+                                               value="@item.ActualQuantity" 
+                                               min="0" max="100" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
                             <td class="text-end"><span class="badge bg-light text-dark border">@item.Type</span></td>
                             <td class="text-end pe-4 fw-bold">@item.Amount.ToString("C")</td>
                         </tr>
@@ -28,12 +54,12 @@
                     @if (Model.InsuranceDeduction > 0 || Model.Discounts > 0)
                     {
                         <tr class="bg-light bg-opacity-50">
-                            <td colspan="3" class="ps-4 py-1 small text-muted text-uppercase tracking-wider fw-bold">Adjustments & Discounts</td>
+                            <td colspan="5" class="ps-4 py-1 small text-muted text-uppercase tracking-wider fw-bold">Adjustments & Discounts</td>
                         </tr>
                         @foreach (var item in Model.Items.Where(i => i.Amount < 0))
                         {
                             <tr class="text-success fw-bold">
-                                <td class="ps-4 py-2"><i class="bi bi-dash-circle me-1"></i> @item.Description</td>
+                                <td colspan="3" class="ps-4 py-2"><i class="bi bi-dash-circle me-1"></i> @item.Description</td>
                                 <td class="text-end">@item.Type</td>
                                 <td class="text-end pe-4">-@Math.Abs(item.Amount).ToString("C")</td>
                             </tr>

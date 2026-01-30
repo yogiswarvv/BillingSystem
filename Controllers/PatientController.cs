@@ -40,7 +40,7 @@ namespace BillingSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> Index(string searchString)
         {
-            var tomorrow = DateTime.Today.AddDays(1);
+            var now = DateTime.Now;
             
             IQueryable<Patient> query = _unitOfWork.Patients.GetAllQueryable()
                 .Include(p => p.Appointments)
@@ -75,11 +75,17 @@ namespace BillingSystem.Controllers
             var model = new PatientDashboardListVM
             {
                 TotalPatientsCount = patients.Count,
-                AppointmentsTomorrowCount = patients.SelectMany(p => p.Appointments).Count(a => a.AppointmentDate.Date == tomorrow.Date),
+                UpcomingAppointmentsCount = patients.SelectMany(p => p.Appointments)
+                    .Count(a => a.Status == "Scheduled" && 
+                               (a.AppointmentDate.Date > now.Date || 
+                               (a.AppointmentDate.Date == now.Date && a.AppointmentTime > now.TimeOfDay))),
                 Patients = patients.Select(p => {
-                    var tomorrowAppt = p.Appointments
-                        .Where(a => a.AppointmentDate.Date == tomorrow.Date)
-                        .OrderBy(a => a.AppointmentTime)
+                    var nextAppt = p.Appointments
+                        .Where(a => a.Status == "Scheduled" && 
+                                   (a.AppointmentDate.Date > now.Date || 
+                                   (a.AppointmentDate.Date == now.Date && a.AppointmentTime > now.TimeOfDay)))
+                        .OrderBy(a => a.AppointmentDate)
+                        .ThenBy(a => a.AppointmentTime)
                         .FirstOrDefault();
 
                     return new PatientDashboardVM
@@ -89,10 +95,15 @@ namespace BillingSystem.Controllers
                         Mobile = p.MobileNumber,
                         Email = p.Email ?? "N/A",
                         AgeGender = $"{p.Age}yrs / {p.Gender}",
-                        HasAppointmentTomorrow = tomorrowAppt != null,
-                        TomorrowAppointmentTime = tomorrowAppt?.AppointmentTime.ToString(@"hh\:mm") ?? "No Appointment",
-                        AppointmentStatus = tomorrowAppt?.Status ?? "N/A",
-                        AppointmentId = tomorrowAppt?.AppointmentId,
+                        HasUpcomingAppointment = nextAppt != null,
+                        NextAppointmentDisplay = nextAppt != null ? 
+                            (nextAppt.AppointmentDate.Date == now.Date ? "Today " : 
+                             nextAppt.AppointmentDate.Date == now.Date.AddDays(1) ? "Tomorrow " : 
+                             nextAppt.AppointmentDate.ToString("dd MMM ")) + 
+                            DateTime.Today.Add(nextAppt.AppointmentTime).ToString("hh:mm tt") 
+                            : "No Appointment",
+                        AppointmentStatus = nextAppt?.Status ?? "N/A",
+                        AppointmentId = nextAppt?.AppointmentId,
                         PendingLabOrders = p.Appointments.SelectMany(a => a.LabOrders).Count(l => l.Status == "Pending"),
                         RecentPrescriptions = p.Appointments.SelectMany(a => a.Prescriptions).Count(),
                         IsActive = p.IsActive
@@ -179,7 +190,7 @@ namespace BillingSystem.Controllers
             var model = new PatientProfileVM
             {
                 Patient = patient,
-                Appointments = appointments.OrderByDescending(a => a.AppointmentDate).ToList(),
+                Appointments = appointments.OrderByDescending(a => a.AppointmentDate).ThenByDescending(a => a.AppointmentTime).ToList(),
                 LabOrders = labOrders.OrderByDescending(l => l.OrderDate).ToList(),
                 ActiveAdmission = admissions.FirstOrDefault(a => a.DischargeDate == null),
                 AdmissionHistory = admissions.OrderByDescending(a => a.AdmitDate).ToList(),
@@ -218,8 +229,29 @@ namespace BillingSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Admit(int id)
         {
-            var patient = await _unitOfWork.Patients.GetByIdAsync(id);
+            var patient = await _unitOfWork.Patients.GetPatientWithDetailsAsync(id);
             if (patient == null) return NotFound();
+
+            var appointments = patient.Appointments
+                .OrderByDescending(a => a.AppointmentDate)
+                .ThenByDescending(a => a.AppointmentTime)
+                .ToList();
+
+            var latestActiveAppt = appointments.FirstOrDefault(a => a.Status != "Cancelled");
+            var latestOverallAppt = appointments.FirstOrDefault();
+
+            if (latestActiveAppt == null)
+            {
+                if (latestOverallAppt == null)
+                {
+                    TempData["ErrorMessage"] = "Cannot admit patient without at least one recorded appointment.";
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "Cannot admit patient as all appointments have been cancelled.";
+                }
+                return RedirectToAction(nameof(Details), new { id });
+            }
 
             try 
             {

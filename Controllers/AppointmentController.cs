@@ -171,7 +171,19 @@ namespace BillingSystem.Controllers
             var appointment = await _appointmentService.GetAppointmentByIdAsync(id);
             if (appointment != null)
             {
+                // Business Rule: Cannot cancel if there are pending or unpaid lab orders
+                if (appointment.LabOrders.Any(l => l.Status == "Pending" || !l.IsPaid))
+                {
+                    TempData["ErrorMessage"] = "Cannot cancel appointment: There are pending or unpaid lab orders associated with it.";
+                    if (!string.IsNullOrEmpty(returnUrl))
+                    {
+                        return Redirect(returnUrl);
+                    }
+                    return RedirectToAction(nameof(Index));
+                }
+
                 await _appointmentService.UpdateAppointmentStatusAsync(id, "Cancelled");
+                TempData["SuccessMessage"] = "Appointment cancelled successfully.";
             }
 
             if (!string.IsNullOrEmpty(returnUrl))

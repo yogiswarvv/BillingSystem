@@ -118,11 +118,16 @@ namespace BillingSystem.ViewModels
     {
         public int AppointmentId { get; set; }
         public string PatientName { get; set; } = string.Empty;
-        
-        [Required(ErrorMessage = "Please select at least one medicine.")]
-        public List<int> SelectedMedicineIds { get; set; } = new List<int>();
-        
-        public List<SelectListItem> AvailableMedicines { get; set; } = new List<SelectListItem>();
+        public List<MedicineSelectionVM> Medicines { get; set; } = new List<MedicineSelectionVM>();
+    }
+
+    public class MedicineSelectionVM
+    {
+        public int MedicineId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Dosage { get; set; } = string.Empty;
+        public bool IsSelected { get; set; }
+        public int Quantity { get; set; } = 1;
     }
 
     public class PrescriptionUpdateVM
